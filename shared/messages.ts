@@ -14,12 +14,18 @@ export function isRoomCode(value: unknown): value is string {
 
 /** Telefon → képernyő. Csak események, nem folyamatos adat. */
 export type ControllerEvent =
-  | { t: "tap" }
-  | { t: "spell"; id: string };
+  | { t: "spell"; id: string } // felismert jel
+  | { t: "restart" }; // új játék a játék vége után
+
+/** A játék állapota a képernyőn ("lobby" = a menükben van) */
+export type GamePhase = "lobby" | "countdown" | "playing" | "paused" | "over";
 
 /** Képernyő → telefon visszajelzések. */
 export type ScreenEvent =
-  | { t: "feedback"; kind: "hit" | "miss" | "hurt" };
+  | { t: "feedback"; kind: "hit"; count: number } // ennyi ellenfél pusztult el
+  | { t: "feedback"; kind: "no_mana" | "cooldown" | "hurt" }
+  // spells: a használható varázslatok azonosítói, hogy a telefon tudja, mit lehet rajzolni
+  | { t: "phase"; phase: GamePhase; score: number; spells: string[] };
 
 /** Kliens → szerver */
 export type ClientMsg =
@@ -42,5 +48,5 @@ export type ServerMsg =
   | ControllerEvent
   | ScreenEvent;
 
-export const CONTROLLER_EVENTS: ReadonlySet<string> = new Set(["tap", "spell"]);
-export const SCREEN_EVENTS: ReadonlySet<string> = new Set(["feedback"]);
+export const CONTROLLER_EVENTS: ReadonlySet<string> = new Set(["spell", "restart"]);
+export const SCREEN_EVENTS: ReadonlySet<string> = new Set(["feedback", "phase"]);

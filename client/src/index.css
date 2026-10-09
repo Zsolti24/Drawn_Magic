@@ -25,7 +25,8 @@ body,
 }
 
 body {
-  background: radial-gradient(ellipse at top, var(--bg-2), var(--bg) 70%);
+  background: radial-gradient(ellipse at top, var(--bg-2), var(--bg) 70%) fixed;
+  background-color: var(--bg);
   color: var(--text);
 }
 
@@ -137,10 +138,8 @@ code {
 }
 
 .qr {
-  background: #fff;
-  border-radius: 12px;
-  padding: 8px;
   line-height: 0;
+  filter: drop-shadow(0 0 18px rgba(167, 123, 255, 0.35));
 }
 
 .room-code {
@@ -181,25 +180,1824 @@ code {
   align-items: center;
 }
 
-.big-btn {
+.controller__phase {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Rajzolás közben ne görgessen, ne nagyítson, ne jelöljön ki */
+html.no-scroll,
+html.no-scroll body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  inset: 0;
+  -webkit-touch-callout: none;
+}
+
+.pad-area {
+  position: relative;
   flex: 1;
+  margin-top: 0.75rem;
+  border-radius: 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(167, 123, 255, 0.12), transparent 70%),
+    var(--bg-2);
+  border: 1px solid rgba(167, 123, 255, 0.25);
+}
+
+.draw-pad {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  display: block;
+}
+
+.flash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 12%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  animation: flash 1.1s ease-out forwards;
+}
+
+.flash__text {
+  font-size: 2.6rem;
+  font-weight: 800;
+  text-shadow: 0 0 18px currentColor;
+}
+
+.flash__detail {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  25% {
+    transform: scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+.hurt-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 80px 20px rgba(248, 113, 113, 0.8);
+  animation: fade-out 0.6s ease-out forwards;
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.pad-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(15, 11, 30, 0.8);
+  text-align: center;
+}
+
+/* Csak tájékoztat, alatta lehet gyakorolni */
+.pad-overlay--soft {
+  background: none;
+  justify-content: flex-end;
+  padding-bottom: 1.5rem;
+  pointer-events: none;
+}
+
+.btn--big {
+  font-size: 1.4rem;
+  padding: 0.9rem 2.2rem;
+  border-radius: 16px;
+}
+
+.small {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.link-btn {
   margin-top: 1rem;
   font: inherit;
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  background: none;
   border: none;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Játék a képernyőn */
+.screen--game {
+  position: fixed;
+  inset: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.screen__bar--overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem 1.25rem 1.6rem;
+  pointer-events: none;
+  background: linear-gradient(rgba(10, 7, 22, 0.55), rgba(10, 7, 22, 0));
+}
+
+.screen__bar--overlay .status {
+  color: var(--text);
+}
+
+.title--small {
+  font-size: 1.1rem;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay--dim {
+  background: rgba(10, 7, 22, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.overlay h2 {
+  margin: 0;
+}
+
+.countdown {
+  font-size: 9rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--accent-2);
+  text-shadow: 0 0 40px var(--accent);
+  animation: pop 1s ease-out forwards;
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.2;
+    transform: scale(0.9);
+  }
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.screen--game .legend {
+  position: absolute;
+  bottom: 1rem;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.legend kbd {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.legend--phone {
+  margin-top: 0.6rem;
+  gap: 1rem;
+}
+
+.controls-hint {
+  position: absolute;
+  left: 1.25rem;
+  top: 2.6rem;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.legend__cost {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #93c5fd;
+}
+
+/* Próbafülke */
+.wardrobe {
+  min-height: 100%;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wardrobe__body {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(280px, 1fr);
+  align-items: stretch;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+@media (max-width: 760px) {
+  .wardrobe__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wardrobe__preview {
+  width: 100%;
+  min-height: 420px;
+  height: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(167, 123, 255, 0.25);
+}
+
+.wardrobe__options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wardrobe__slot h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chips__gap {
+  width: 1rem;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(167, 123, 255, 0.35);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chip--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+.swatch {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------ Menük */
+a {
+  color: var(--accent-2);
+}
+
+.btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover {
+  filter: brightness(1.12);
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(167, 123, 255, 0.45);
+  color: var(--text);
+}
+
+.btn--danger {
+  background: #dc2626;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.record {
+  margin: 0;
+  font-weight: 800;
+  color: #fde68a;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.8);
+}
+
+.ok-text {
+  color: var(--ok);
+}
+
+.section-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+}
+
+.room-code--mid {
+  font-size: 1.6rem;
+  margin: 0.2rem 0 0;
+}
+
+.title--hero {
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.phone-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.4rem;
+}
+
+.phone-panel__status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+
+/* Főmenü */
+.menu {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+}
+
+.menu__stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.menu__content {
+  position: relative;
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(300px, 520px) 1fr minmax(220px, 280px);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "header . phone"
+    "nav . phone";
+  gap: 1.5rem;
+  padding: 2rem;
+  background: linear-gradient(90deg, rgba(10, 7, 22, 0.85), rgba(10, 7, 22, 0.25) 45%, rgba(10, 7, 22, 0) 60%);
+}
+
+.menu__header {
+  grid-area: header;
+}
+
+.menu__tagline {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--text);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.menu__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.menu__stats span {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(10, 7, 22, 0.7);
+  border: 1px solid rgba(167, 123, 255, 0.35);
+}
+
+.menu__grid {
+  grid-area: nav;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-self: start;
+}
+
+.menu__phone {
+  grid-area: phone;
+  align-self: start;
+  margin: 0;
+  padding: 1.25rem;
+  background: rgba(34, 26, 64, 0.9);
+}
+
+.menu-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem;
+  border-radius: 16px;
+  text-decoration: none;
+  color: var(--text);
+  background: rgba(34, 26, 64, 0.88);
+  border: 1px solid rgba(167, 123, 255, 0.3);
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.menu-card:hover,
+.menu-card:focus-visible {
+  transform: translateX(6px);
+  border-color: var(--accent);
+  background: rgba(50, 36, 96, 0.95);
+  outline: none;
+}
+
+.menu-card--primary {
+  padding: 0.9rem;
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+.menu-card--primary .menu-card__title {
+  font-size: 1.6rem;
+}
+
+.menu-card__art {
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.menu-card__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-card__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.menu-card__subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .menu__content {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "nav"
+      "phone";
+    background: rgba(10, 7, 22, 0.7);
+  }
+}
+
+/* Almenük */
+.page {
+  min-height: 100%;
+  padding: 1.25rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.page__bar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.page__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid rgba(167, 123, 255, 0.45);
+}
+
+.back-btn:hover {
+  background: rgba(167, 123, 255, 0.15);
+}
+
+/* Nyíl CSS-formából */
+.back-btn__arrow {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+/* Pályák */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.level-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid rgba(167, 123, 255, 0.3);
+  text-decoration: none;
+  color: var(--text);
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease;
+}
+
+a.level-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+}
+
+.level-card--locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.level-card__art {
+  border-radius: 10px;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 220 / 124;
+}
+
+.level-card__name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 0.3rem;
+}
+
+.level-card__desc {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.level-card__best {
+  font-size: 0.85rem;
+  color: #fde68a;
+}
+
+/* Képességek */
+.slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.slot {
+  width: 150px;
+  height: 150px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+}
+
+.slot--filled {
+  border: 2px solid;
+  cursor: pointer;
+}
+
+.slot--filled:hover {
+  filter: brightness(1.15);
+}
+
+.slot--empty {
+  border: 2px dashed rgba(167, 123, 255, 0.35);
+}
+
+.slot__name {
+  font-weight: 700;
+}
+
+.slot__cost {
+  font-size: 0.85rem;
+  color: #93c5fd;
+}
+
+.spell-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+.spell-card {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: var(--card);
+  border: 2px solid rgba(167, 123, 255, 0.25);
+  cursor: pointer;
+}
+
+.spell-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.spell-card--on {
+  background: rgba(50, 36, 96, 0.95);
+}
+
+.spell-card--locked {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.spell-card__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.1rem;
+}
+
+.spell-card__name {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.spell-card__desc {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.spell-card__meta {
+  font-size: 0.8rem;
+  color: #93c5fd;
+}
+
+.spell-card__state {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Beállítások */
+.settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.settings .card {
+  margin: 0;
+  padding: 1.25rem;
+}
+
+.controls-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+
+.controls-list dt {
+  color: var(--muted);
+}
+
+.controls-list dd {
+  margin: 0;
+}
+
+.settings .card > .btn {
+  margin-top: 0.75rem;
+}
+
+.confirm {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.confirm p {
+  width: 100%;
+  margin: 0;
+}
+
+/* Öltözet */
+.outfit {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.2fr) minmax(220px, 260px) minmax(260px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .outfit {
+    grid-template-columns: 1fr 1fr;
+  }
+  .outfit__preview {
+    grid-column: 1 / -1;
+  }
+}
+
+.outfit__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.outfit__stage {
+  width: 100%;
+  height: min(62vh, 560px);
+  min-height: 360px;
+  border-radius: 16px;
+  border: 1px solid rgba(167, 123, 255, 0.25);
+  display: block;
+}
+
+.outfit__slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.gear-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.5rem;
+  border-radius: 14px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: var(--card);
+  border: 2px solid rgba(167, 123, 255, 0.25);
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.gear-slot:hover {
+  border-color: rgba(167, 123, 255, 0.6);
+}
+
+.gear-slot--open {
+  border-color: var(--accent);
+  background: rgba(50, 36, 96, 0.95);
+  transform: translateX(6px);
+}
+
+.gear-slot__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.gear-slot__label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.gear-slot__name {
+  font-weight: 700;
+}
+
+.outfit__panel {
+  border-radius: 16px;
+  background: rgba(34, 26, 64, 0.6);
+  border: 1px dashed rgba(167, 123, 255, 0.25);
+  padding: 1rem;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.outfit__panel--open {
+  background: var(--card);
+  border-style: solid;
+  animation: panel-in 0.18s ease-out;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+.outfit__hint {
+  margin: auto 0;
+  text-align: center;
+}
+
+/* Görgethető tárgylista */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: min(60vh, 540px);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167, 123, 255, 0.5) transparent;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem;
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: rgba(15, 11, 30, 0.5);
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.item-row:hover,
+.item-row:focus-visible {
+  border-color: rgba(167, 123, 255, 0.6);
+  outline: none;
+}
+
+.item-row--on {
+  border-color: var(--accent);
+  background: rgba(50, 36, 96, 0.9);
+}
+
+.item-row--locked {
+  cursor: default;
+}
+
+.item-row--locked .item-row__name {
+  color: var(--muted);
+}
+
+.item-row__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.item-row__name {
+  font-weight: 700;
+}
+
+.item-row__obtain {
+  font-size: 0.8rem;
+  color: #fde68a;
+}
+
+.item-row--on .item-row__obtain,
+.item-row:not(.item-row--locked) .item-row__obtain {
+  color: var(--ok);
+}
+
+.item-row__badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  white-space: nowrap;
+}
+
+/* Képességtár kártyák: kép, leírás, rajzolási útmutató */
+.spell-list {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.spell-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  cursor: default;
+  border-radius: 16px;
+}
+
+.spell-card__art {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 2 / 1;
+  border-radius: 10px;
+}
+
+.spell-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.spell-card__name {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.spell-card__mana {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #93c5fd;
+  white-space: nowrap;
+}
+
+.spell-card__desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.spell-card__howto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  background: rgba(15, 11, 30, 0.55);
+  border: 1px solid rgba(167, 123, 255, 0.18);
+}
+
+.spell-card__label {
+  align-self: flex-start;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.spell-card__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--text);
+}
+
+.spell-card--locked .spell-card__hint {
+  color: var(--muted);
+}
+
+.spell-card__action {
+  margin-top: auto;
+}
+
+.spell-card__action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Öltözet: próbasáv a mágus alatt */
+.preview-bar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid rgba(167, 123, 255, 0.25);
+}
+
+.preview-bar__title {
+  align-self: center;
+  padding: 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.preview-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.45rem 0.3rem;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: rgba(15, 11, 30, 0.55);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.preview-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--btn-color, var(--accent));
+}
+
+.preview-btn:active {
+  transform: translateY(0);
+}
+
+.preview-btn--on {
+  border-color: var(--btn-color, var(--accent));
+  background: rgba(50, 36, 96, 0.9);
+}
+
+.spell-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.stat {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 11, 30, 0.6);
+}
+
+.stat--mana {
+  color: #93c5fd;
+}
+
+.stat--cooldown {
+  color: #e9d5ff;
+}
+
+.spell-card__details summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.spell-card__details summary::-webkit-details-marker {
+  display: none;
+}
+
+.spell-card__details summary:hover {
+  color: var(--text);
+}
+
+/* Lefelé mutató nyíl CSS-formából; nyitva felfelé fordul */
+.chevron {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.15s ease;
+}
+
+.spell-card__details[open] .chevron {
+  transform: rotate(-135deg) translate(-2px, 0);
+}
+
+/* A részletek lebegő buborékban nyílnak, így a kártya mérete nem változik */
+.spell-card__details {
+  position: relative;
+}
+
+.spell-card__details p {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 0.4rem);
+  z-index: 5;
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: #2d2154;
+  border: 1px solid rgba(167, 123, 255, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: details-in 0.15s ease-out;
+}
+
+@keyframes details-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Mana és töltési idő ikon a számok mellett */
+.stat-icon {
+  flex-shrink: 0;
+}
+
+.stat,
+.stat-inline,
+.legend__cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.slot__cost {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.legend--phone {
+  flex-wrap: wrap;
+  gap: 0.35rem 0.8rem;
+}
+
+.legend--phone li {
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.spells-intro {
+  margin: 0 0 0.75rem;
+}
+
+.spell-card__badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  color: #0f2a17;
+  background: var(--ok);
+  white-space: nowrap;
+}
+
+.spell-card__badge--locked {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.screen--game .screen__bar--overlay {
+  justify-content: flex-end;
+  background: none;
+}
+
+.screen--game .screen__bar--overlay .status {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.spell-card__art {
+  display: block;
+}
+
+.spell-card__art--locked {
+  filter: grayscale(1) brightness(0.45);
+}
+
+/* ------------------------------------------------------------ Szünetmenü */
+.pause {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: radial-gradient(ellipse at center, rgba(8, 9, 14, 0.45), rgba(8, 9, 14, 0.82));
+  backdrop-filter: blur(10px) saturate(0.7);
+  -webkit-backdrop-filter: blur(10px) saturate(0.7);
+  animation: pause-fade 0.2s ease-out;
+}
+
+@keyframes pause-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.pause__panel {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.6rem 1.6rem 1.2rem;
   border-radius: 24px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent), #6d3df0);
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(180deg, rgba(30, 32, 42, 0.86), rgba(16, 17, 23, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.94);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  animation: pause-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 
-.big-btn:active {
-  transform: scale(0.98);
-  filter: brightness(1.2);
+@keyframes pause-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
 }
 
-.big-btn:disabled {
-  opacity: 0.35;
+.pause__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pause__chip {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pause__level {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.pause__title {
+  margin: -0.2rem 0 0;
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.pause__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.pause__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pause__stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pause__stat-value small {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.2rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.pause__stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.pause__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pause__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.pause__btn span {
+  flex: 1;
+}
+
+.pause__btn:hover,
+.pause__btn:focus-visible {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+.pause__btn--primary {
+  justify-content: center;
+  padding: 0.95rem 1rem;
+  font-size: 1.1rem;
+  color: #0b0d12;
+  background: linear-gradient(180deg, #ffffff, #d9dce6);
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.12);
+}
+
+.pause__btn--primary:hover,
+.pause__btn--primary:focus-visible {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.pause .pause__btn--primary kbd {
+  color: rgba(11, 13, 18, 0.75);
+  border-color: rgba(11, 13, 18, 0.35);
+}
+
+.pause__btn--danger {
+  color: #fda4af;
+}
+
+.pause kbd {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pause__icon {
+  flex-shrink: 0;
+}
+
+.pause__phone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  text-align: center;
+}
+
+.pause__phone p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #fde68a;
+}
+
+.pause__hint {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ------------------------------------------------------------ Pályaválasztó témákkal */
+.practice-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem;
+  border-radius: 16px;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid rgba(167, 123, 255, 0.3);
+  max-width: 560px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.practice-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.practice-card__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.practice-card__name {
+  font-weight: 700;
+}
+
+.practice-card__desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.level-art {
+  border-radius: 10px;
+  display: block;
+}
+
+.theme {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: rgba(34, 26, 64, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.theme__head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.theme__index {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #0b0d12;
+  background: var(--theme-color);
+}
+
+.theme__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.theme__name {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.theme__desc {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.theme__levels {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .theme__levels {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.level-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 14px;
+  text-decoration: none;
+  color: var(--text);
+  background: rgba(15, 11, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.level-tile:hover {
+  border-color: var(--theme-color);
+  transform: translateY(-3px);
+}
+
+.level-tile--last {
+  border-color: color-mix(in srgb, var(--theme-color) 45%, transparent);
+}
+
+.level-tile__art {
+  position: relative;
+  display: block;
+}
+
+.level-tile__art .level-art {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 200 / 112;
+}
+
+.level-tile__code {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.35rem;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.level-tile--locked {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+
+.level-tile--locked:hover {
+  border-color: rgba(255, 255, 255, 0.06);
+  transform: none;
+}
+
+.level-tile__done {
+  position: absolute;
+  right: 0.45rem;
+  top: 0.45rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #1a2e05;
+  background: #a3e635;
+}
+
+.level-tile__name {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.level-tile__best {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------ Szörnyek a pályaválasztóban */
+.theme__head {
+  position: relative;
+}
+
+.theme__text {
+  flex: 1;
+}
+
+.monsters {
+  position: relative;
+  outline: none;
+}
+
+.monsters__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  background: rgba(15, 11, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: default;
+  transition: border-color 0.15s ease;
+}
+
+.monsters:hover .monsters__button,
+.monsters:focus-within .monsters__button {
+  border-color: var(--theme-color);
+}
+
+.monsters__count {
+  font-size: 0.75rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  color: #0b0d12;
+  background: var(--theme-color);
+}
+
+.monsters__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 30;
+  width: min(640px, 90vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(22, 24, 32, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    visibility 0.15s;
+}
+
+.monsters:hover .monsters__panel,
+.monsters:focus-within .monsters__panel {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.monsters__title {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+}
+
+.monsters__note {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.monsters__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.monster {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.monster canvas {
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 70%, rgba(132, 204, 22, 0.18), rgba(255, 255, 255, 0.02));
+}
+
+.monster__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.monster__name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.monster__from {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+}
+
+.monster__desc {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.monster__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.1rem;
+}
+
+.tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.08rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tag--special {
+  color: #0b0d12;
+  background: var(--theme-color);
+}
+
+.monster--locked {
+  opacity: 0.6;
+}
+
+.win-title {
+  color: #a3e635;
 }

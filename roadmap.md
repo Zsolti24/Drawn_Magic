@@ -1,11 +1,13 @@
 # Varázslós játék – Roadmap
 
-Böngészős játék: a nagy képernyőn fut a játék, a telefon QR-kóddal csatlakozik és kontrollerként működik. A telefonra rajzolt jelekkel varázsolsz.
+Böngészős játék: a nagy képernyőn fut a játék, a telefon QR-kóddal csatlakozik és kontrollerként működik. A mágust a gép billentyűzetén mozgatod, a telefonra rajzolt jelekkel varázsolsz.
 
 ## Koncepció
 
-- **Képernyő:** felülnézet, a varázsló középen áll, körben jönnek az ellenfelek, mindegyik fölött egy jel
-- **Telefon:** rajzolsz a kijelzőre, a felismert jel minden azonos jelű ellenfelet eltalál
+- **Képernyő:** felülnézet, zárt füves rét, ami nagyobb a képernyőnél; a kamera követi a mágust (WASD / nyilak), az ellenfelek a látott területen kívülről jönnek és üldözik
+- **Telefon:** rajzolsz a kijelzőre, minden jel egy képesség (pl. V = tűzgolyó, cikkcakk = villám, kör = pajzs)
+- **Célzás:** automatikus, a képesség dönti el (legközelebbi ellenfél, láncban ugrik, maga körül)
+- **Mana:** közös készlet, lassan töltődik, minden képességnek ára van
 - **Cél:** a pálya hullámainak túlélése, pontszám, fejlődés
 - **Játékon kívül:** fiók, pályaválasztó, képességek, felszerelés
 
@@ -43,7 +45,7 @@ Böngészős játék: a nagy képernyőn fut a játék, a telefon QR-kóddal csa
 
 - A játéklogika (`/game`) ne függjön a Reacttől: sima TypeScript, a komponens csak kirajzolja
 - Ellenfelek, jelek, pályák, tárgyak, képességek adatként legyenek leírva, ne kódba égetve
-- A telefon csak eseményt küld (`{ t: "spell", id: "circle" }`), nem folyamatos adatot
+- A telefon csak eseményt küld (`{ t: "spell", id: "circle" }`), nem folyamatos adatot; a mozgás a billentyűzetről jön
 - A haladást a szerver menti, nem a kliens
 
 ---
@@ -62,22 +64,26 @@ Böngészős játék: a nagy képernyőn fut a játék, a telefon QR-kóddal csa
 
 ## 1. fázis – Játékmag
 
-- [ ] Rajzfelület a telefonon (pointer események, `touch-action: none`, görgetés tiltása)
-- [ ] $1 recognizer, 3 jel: V, kör, cikkcakk
-- [ ] Felismerési küszöb, hibás rajz jelzése
-- [ ] Canvas játékciklus `requestAnimationFrame`-mel
-- [ ] Varázsló középen, ellenfelek a szélről a közép felé, jel a fejük fölött
-- [ ] Varázslat: minden azonos jelű ellenfél elpusztul
-- [ ] Életek, pontszám, játék vége, újrakezdés
-- [ ] Visszajelzések: találat, hiba, sebződés (képernyőn és telefonon)
-- [ ] Wake Lock a telefonon
+- [x] Rajzfelület a telefonon (pointer események, `touch-action: none`, görgetés tiltása)
+- [x] $1 recognizer, 3 jel: V, kör, cikkcakk
+- [x] Képességek adatként (`data/spells.ts`): tűzgolyó, villám, pajzs; mana
+- [x] Felismerési küszöb, hibás rajz jelzése
+- [x] Canvas játékciklus `requestAnimationFrame`-mel
+- [x] Mágus WASD-vel mozog, ellenfelek a szélről jönnek és üldözik
+- [x] Varázslat: a jelhez tartozó képesség automatikus célzással
+- [x] Életek, pontszám, játék vége, újrakezdés
+- [x] Visszajelzések: találat, hiba, sebződés (képernyőn és telefonon)
+- [x] Wake Lock a telefonon
 
 **Kész, ha:** 5 percig játszva is szórakoztató. Itt érdemes a legtöbbet finomítani.
 
 ## 2. fázis – Az első pálya
 
 - [ ] Pálya leírása adatfájlban: hullámok, ellenfelek, időzítés
-- [ ] Ellenféltípusok: alap, gyors, többjelű, nagy
+- [x] Ellenféltípus-rendszer adatként (élet, sebesség, méret, sebzés, csapat, viselkedés)
+- [x] A rét 10 faja saját rajzzal és animációval (pitypang, katica, dongó, csiga, vakond, pöfeteg, béka, sün, varjú, bokorgólem)
+- [ ] A többi 4 téma saját fajai
+- [x] Szörnyek listája témánként a pályaválasztóban
 - [ ] Kombó szorzó
 - [ ] Főellenség a pálya végén
 - [ ] Pálya teljesítése és elbukása, eredményképernyő
@@ -99,32 +105,36 @@ Böngészős játék: a nagy képernyőn fut a játék, a telefon QR-kóddal csa
 
 ## 4. fázis – Főmenü és pályaválasztó
 
-- [ ] Főmenü: Pályák, Képességek, Felszerelés, Beállítások
-- [ ] Pályatérkép: 1 játszható pálya, a többi helye zárolva
-- [ ] Pálya indítása a menüből, visszatérés a végén
-- [ ] Beállításokban: fiók nullázása, kilépés
-- [ ] Döntés: a menü egérrel vagy telefonról irányítható
+- [x] Főmenü: Pályák, Képességek, Öltözet (felszerelés), Beállítások
+- [x] Pályaválasztó: 5 téma × 5 pálya (1-1 … 5-5), mind játszható
+- [x] Témák saját tereppel és hangulattal: Virágos rét, Ködös erdő, Holdfényes mocsár, Kristálybarlang, Hamuvidék
+- [ ] Témánkénti mechanikák (köd, víz, kristály, láva), ellenféltípusok és főellenségek (2. fázis)
+- [x] Pálya indítása a menüből, visszatérés a végén (Esc: szünet, kilépés a menübe)
+- [x] Beállításokban: mentés nullázása megerősítéssel (fiók és kilépés a 3. fázissal)
+- [x] Döntés: egyelőre egérrel; a telefonos menüirányítás később
 
 **Kész, ha:** a menüből indul a pálya, és a végén oda térsz vissza.
 
 ## 5. fázis – Képességek és tanulás
 
-- [ ] Képességek adatként: ár, előfeltétel, hatás
+- [x] Képességek adatként: ár, hatás (előfeltétel még nincs)
+- [x] Felszerelt varázslatok (3 hely) választása, a telefon csak ezeket fogadja el
 - [ ] Képességfa felület, megnyitás tapasztalati pontból
 - [ ] Új jelek tanulása
-- [ ] Saját varázslatok töltődési idővel: pajzs, lassítás, robbanás
-- [ ] Tanuló mód: új jel gyakorlása, amíg párszor sikerül
+- [x] Új képességek manáért: tornádó, méregbomba, gyógyítás, fagyasztó nova, meteor
+- [ ] Tanuló mód: új jel gyakorlása, amíg párszor sikerül (alapja: Gyakorló tisztás célbábukkal)
 - [ ] Megnyitott képességek mentése a profilba
 
 **Kész, ha:** a megtanult képesség megjelenik és működik a pályán.
 
 ## 6. fázis – Felszerelés
 
-- [ ] Tárgyak adatként: hely, kinézet, buff
-- [ ] Helyek: kalap, köpeny, pálca, amulett
-- [ ] Felszerelés felület: felvétel, levétel, összehasonlítás
-- [ ] Buffok alkalmazása a játékban (pl. +1 élet, gyorsabb töltődés, nagyobb kombószorzó)
-- [ ] Kinézet megjelenítése a varázslón
+- [x] Tárgyak adatként: hely, kinézet, megszerzés módja (buff még nincs)
+- [x] Helyek: kalap, köpeny, pálca, amulett (+ szabad megjelenés: bőr, szakáll)
+- [x] Felszerelés felület: helyek ikonokkal, görgethető tárgylista, felpróbálás, felvétel, levétel; lezárt tárgyak lakattal
+- [ ] Összehasonlítás (buffok, ha lesznek)
+- [ ] Buffok alkalmazása a játékban (pl. +1 élet, gyorsabb manatöltődés, olcsóbb varázslat, nagyobb kombószorzó)
+- [x] Kinézet megjelenítése a varázslón
 - [ ] Szerzés: bolt aranyért, ritka tárgyak a főellenségtől
 
 **Kész, ha:** a felvett tárgy látszik a varázslón és érezhetően változtat a játékon.
