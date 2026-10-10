@@ -35,6 +35,18 @@ const SCENARIOS: Record<string, Scenario> = {
   heal: { wizard: [0, 0.05], enemies: [], wizardHp: 35, loop: 2.4, still: 0.75 },
   freeze: { wizard: [0, 0.05], enemies: ring(6, 0.5), enemySpeed: 0.2, castAt: 0.55, loop: 3.8, still: 1.05 },
   meteor: { wizard: [-0.55, 0.05], enemies: [[0.3, 0.02], [0.42, -0.08], [0.36, 0.14], [0.22, -0.1]], enemySpeed: 0.02, loop: 3.6, still: 1.32 },
+  missiles: {
+    wizard: [-0.55, 0.05],
+    enemies: [[0.2, -0.22], [0.35, 0.05], [0.5, 0.25], [0.62, -0.12], [0.3, 0.3]],
+    enemySpeed: 0.03,
+    enemyHp: 14,
+    loop: 2.4,
+    still: 0.75,
+  },
+  firering: { wizard: [0, 0.05], enemies: ring(7, 0.3), enemySpeed: 0.08, loop: 2.8, still: 0.85 },
+  blink: { wizard: [-0.45, 0.05], enemies: ring(5, 0.2, -0.45), enemySpeed: 0.02, loop: 2.2, still: 0.55 },
+  drain: { wizard: [-0.5, 0.05], enemies: [[0.05, -0.18], [0.2, 0.15], [0.32, -0.05], [0.12, 0.3]], enemySpeed: 0.02, wizardHp: 40, loop: 2.6, still: 0.75 },
+  ascend: { wizard: [0, 0.08], enemies: ring(6, 0.38), enemySpeed: 0.03, wizardHp: 55, castAt: 0.3, loop: 4.6, still: 1.2 },
   blackhole: {
     wizard: [-0.6, 0.05],
     enemies: [[0.1, -0.25], [0.55, 0.25], [0.28, 0.08], [0.62, -0.18], [0.38, -0.06], [0.05, 0.2]],
@@ -123,7 +135,7 @@ export function SpellDemo({ spell, look, active, className }: Props) {
     };
     const paint = (now: number) => {
       drawWorld(ctx, game, look, w, h, unit, now);
-      if (spell.effect.kind === "heal") drawHpBar(ctx, game, w, h, unit);
+      if (scenario.wizardHp !== undefined) drawHpBar(ctx, game, w, h, unit);
     };
 
     if (!active) {

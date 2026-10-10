@@ -7,14 +7,17 @@ export const MATCH_THRESHOLD = 0.7;
 /** Csali minták: ha a rajz ezekre hasonlít legjobban, nem varázslat */
 const DECOY_ID = "";
 const DECOYS: Point[][] = [
-  // Egyenes vonalak
-  ...[0, 45, 90, 135].map((deg) => {
-    const a = (deg * Math.PI) / 180;
-    return [
-      { x: 0.5 - Math.cos(a) / 2, y: 0.5 - Math.sin(a) / 2 },
-      { x: 0.5 + Math.cos(a) / 2, y: 0.5 + Math.sin(a) / 2 },
-    ];
-  }),
+  // V és hegycsúcs: korábbi jelek, ne süljön el helyettük véletlenül más
+  [
+    { x: 0, y: 0 },
+    { x: 0.5, y: 1 },
+    { x: 1, y: 0 },
+  ],
+  [
+    { x: 0, y: 1 },
+    { x: 0.5, y: 0 },
+    { x: 1, y: 1 },
+  ],
 ];
 /** Ennél kisebb rajz (képpontban) csak koppintás, nem jel */
 const MIN_STROKE_SIZE = 40;
@@ -50,7 +53,8 @@ export class Spellbook {
     if (stroke.length < 4 || size < MIN_STROKE_SIZE) return { kind: "ignored" };
 
     const best = this.recognizer.recognize(stroke);
-    if (!best || best.id === DECOY_ID || best.score < MATCH_THRESHOLD) return { kind: "fail", best };
-    return { kind: "match", glyph: this.glyphs.get(best.id)!, score: best.score };
+    const glyph = best ? this.glyphs.get(best.id) : undefined;
+    if (!best || !glyph || best.score < (glyph.minScore ?? MATCH_THRESHOLD)) return { kind: "fail", best };
+    return { kind: "match", glyph, score: best.score };
   }
 }

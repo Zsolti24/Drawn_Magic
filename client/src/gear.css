@@ -1,0 +1,124 @@
+/* A ruhák stat bónuszai: címkék, összesítés és felpróbálás */
+.bonus-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.bonus-chips--empty {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.bonus-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  color: var(--stat-color);
+  background: color-mix(in srgb, var(--stat-color) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stat-color) 45%, transparent);
+  white-space: nowrap;
+}
+
+/* Honnan jön: a stat neve és pontja halványan a hatás után */
+.bonus-chip__src {
+  margin-left: 0.35rem;
+  font-weight: 500;
+  opacity: 0.65;
+}
+
+.gear-slot__text .bonus-chips,
+.item-row__text .bonus-chips {
+  margin: 0.2rem 0;
+}
+
+/* A keskeny felszerelési helyeken csak a hatás látszik (a forrás a buborékban), és törhet */
+.gear-slot__text {
+  min-width: 0;
+}
+
+.gear-slot .bonus-chip {
+  white-space: normal;
+}
+
+.gear-slot .bonus-chip__src {
+  display: none;
+}
+
+.gear-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  background: rgba(15, 11, 30, 0.6);
+  border: 1px solid rgba(167, 123, 255, 0.25);
+}
+
+.gear-summary__title {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.gear-summary__try {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(167, 123, 255, 0.2);
+}
+
+.gear-summary__label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.bonus-diff {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.bonus-diff--same {
+  color: var(--muted);
+}
+
+.bonus-diff li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-weight: 700;
+}
+
+.bonus-diff__up {
+  color: #86efac;
+}
+
+.bonus-diff__down {
+  color: #fda4af;
+}
+
+.bonus-diff__sign {
+  font-size: 0.7rem;
+}
+
+.bonus-diff__effect {
+  font-weight: 500;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.stat-card__gear {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  color: var(--stat-color);
+  border: 1px dashed var(--stat-color);
+}

@@ -1,12 +1,17 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { useAuth } from "../auth/auth";
 import { PageFrame } from "../components/PageFrame";
 import { PhonePanel } from "../components/PhonePanel";
 import { useProfile } from "../profile/profile";
 
 export function SettingsPage() {
   const { reset } = useProfile();
+  const { session, slot, logout } = useAuth();
+  const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const [done, setDone] = useState(false);
+  const slotName = slot !== null ? `${slot + 1}. mentés` : "mentés";
 
   return (
     <PageFrame title="Beállítások">
@@ -27,14 +32,14 @@ export function SettingsPage() {
             <dt>Szünet</dt>
             <dd>Esc</dd>
             <dt>Próba telefon nélkül</dt>
-            <dd>1–9 billentyűk (a képességtár sorrendjében)</dd>
+            <dd>1–0, majd Z X C V B (a képességtár sorrendjében)</dd>
           </dl>
         </section>
 
         <section className="card">
           <h2 className="section-title">Mentés</h2>
           <p className="muted small">
-            A haladás, a megtanult varázslatok és az öltözet ebben a böngészőben van elmentve. Később fiókhoz köthető lesz.
+            A(z) {slotName} haladása, varázslatai és öltözete. A törlés után ez a mentés újrakezdődik az elejéről, a többi mentéshez nem nyúl.
           </p>
           {done ? (
             <p className="ok-text">A mentés törölve, minden visszaállt alapra.</p>
@@ -63,8 +68,29 @@ export function SettingsPage() {
         </section>
 
         <section className="card">
+          <h2 className="section-title">Fiók</h2>
+          <p className="muted small">
+            Bejelentkezve: <strong>{session?.email}</strong> · {slotName}
+          </p>
+          <div className="row row--start">
+            <Link className="btn btn--ghost" to="/saves">
+              Mentés váltása
+            </Link>
+            <button
+              className="btn btn--ghost"
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+            >
+              Kijelentkezés
+            </button>
+          </div>
+        </section>
+
+        <section className="card">
           <h2 className="section-title">Hamarosan</h2>
-          <p className="muted small">Hang és zene, fiók és belépés, a menü irányítása telefonról.</p>
+          <p className="muted small">Hang és zene, Google-belépés, a menü irányítása telefonról.</p>
         </section>
       </div>
     </PageFrame>

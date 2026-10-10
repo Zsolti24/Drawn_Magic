@@ -16,20 +16,29 @@ export interface WizardPose {
   castColor: string | null;
   /** Melyik varázslat (a hozzá tartozó egyedi mozdulathoz) */
   castKind?: string | null;
+  /** Felemelkedés alatt: 0..1, mennyire lángol körülötte az aranyaura (0 = nincs) */
+  aura?: number;
 }
 
 /** Varázslatonként mennyi ideig tart a mozdulatsor (mp) */
 const CAST_DURATIONS: Record<string, number> = {
   fireball: 0.85,
   lightning: 1.0,
+  missiles: 0.8,
   shield: 1.0,
+  firering: 1.0,
+  blink: 0.5,
   tornado: 1.3,
   poison: 1.0,
   heal: 1.3,
+  drain: 1.1,
   freeze: 1.15,
   meteor: 1.4,
   blackhole: 1.5,
+  ascend: 1.9,
 };
+
+const AURA_COLOR = "#fde047";
 
 /** A varázslás mozdulatsorának hossza (mp) */
 export function castAnimSeconds(kind: string | null | undefined) {
@@ -287,6 +296,109 @@ function castMotion(kind: string | null | undefined, p: number, color: string | 
         trail: yank > 0.05 && yank < 0.95 ? 1 : 0,
       };
     }
+    case "missiles": {
+      // 1. maga elé kapja a pálcát és pörgeti  2. ötször egymás után előrelöki, minden lökésnél megrándul
+      const charge = seg(p, 0, 0.25);
+      const volley = seg(p, 0.25, 0.75);
+      const pulse = volley > 0 && volley < 1 ? Math.abs(Math.sin(volley * Math.PI * 5)) : 0;
+      const settle = 1 - seg(p, 0.75, 1);
+      return {
+        ...STILL,
+        lean: (-0.1 * charge + 0.2 * pulse) * settle,
+        shakeX: 0.12 * pulse * settle,
+        squashX: 1 + 0.04 * pulse,
+        handX: (-0.15 * charge + 0.5 * (volley > 0 ? 1 : 0) + 0.15 * pulse) * settle,
+        handY: (-0.2 * charge - 0.15) * settle,
+        staffSpin: -TAU * 2 * charge + 0.5 * (volley > 0 ? 1 : 0) * settle,
+        cape: -0.4 * pulse,
+        hatTip: -0.3 * pulse,
+        eyeGlow: color,
+        glow: env > 0.1 ? color : null,
+        trail: pulse > 0.5 ? 0.6 : 0,
+      };
+    }
+    case "firering": {
+      // 1. leguggol, a pálcát a feje fölé emeli  2. felugrik és megpördül  3. a pálcát a földbe vágja
+      const crouch = seg(p, 0, 0.25) * (1 - seg(p, 0.25, 0.35));
+      const jump = seg(p, 0.25, 0.5);
+      const air = Math.sin(Math.PI * jump) * (p < 0.5 ? 1 : 0);
+      const impact = Math.max(0, 1 - Math.abs(p - 0.52) / 0.08);
+      const planted = seg(p, 0.5, 0.55) * (1 - seg(p, 0.75, 1));
+      return {
+        ...STILL,
+        shakeY: -0.55 * air,
+        spin: TAU * jump * (p < 0.5 ? 1 : 0),
+        squashY: 1 - 0.2 * crouch - 0.25 * impact + 0.05 * air,
+        squashX: 1 + 0.1 * crouch + 0.15 * impact,
+        shakeX: tremble(0.04 * impact),
+        handX: 0.1 * planted,
+        handY: -0.6 * crouch - 0.6 * air + 0.4 * planted,
+        staffSpin: Math.PI * planted,
+        cape: 0.5 * air + 0.3 * impact,
+        hatTip: 0.4 * air - 0.3 * impact,
+        eyeGlow: color,
+        glow: env > 0.1 ? color : null,
+        trail: air > 0.2 ? 0.8 : 0,
+      };
+    }
+    case "blink": {
+      // Hirtelen összehúzódik, majd megnyúlva "kiugrik" az új helyére
+      const pop = 1 - seg(p, 0, 0.5);
+      return {
+        ...STILL,
+        squashX: 1 - 0.35 * pop,
+        squashY: 1 + 0.3 * pop,
+        shakeY: -0.2 * pop,
+        cape: 0.6 * pop,
+        hatTip: 0.4 * pop,
+        eyeGlow: color,
+        glow: pop > 0.1 ? color : null,
+        trail: pop > 0.2 ? 1 : 0,
+      };
+    }
+    case "drain": {
+      // 1. előrenyúl a pálcával  2. remegve húzza magába az életet  3. hátradől, ahogy beáramlik
+      const reach = seg(p, 0, 0.25) * (1 - seg(p, 0.7, 0.85));
+      const pull = seg(p, 0.25, 0.7);
+      const back = seg(p, 0.65, 0.8) * (1 - seg(p, 0.85, 1));
+      return {
+        ...STILL,
+        lean: 0.18 * reach - 0.2 * back,
+        shakeX: tremble(0.03 * reach * pull),
+        handX: 0.55 * reach - 0.15 * back,
+        handY: -0.25 * reach,
+        staffSpin: 0.4 * reach,
+        squashY: 1 + 0.05 * back,
+        cape: -0.3 * reach + 0.3 * back,
+        hatTip: 0.2 * reach,
+        eyeGlow: color,
+        glow: env > 0.15 ? color : null,
+      };
+    }
+    case "ascend": {
+      // 1. térdre ereszkedik, összegyűjti az erőt  2. kétszer megpördülve a magasba emelkedik, karját az égnek tárja
+      // 3. hatalmas kitörés  4. lebeg, remeg az erőtől  5. lassan leereszkedik
+      const kneel = seg(p, 0, 0.18) * (1 - seg(p, 0.18, 0.3));
+      const rise = seg(p, 0.18, 0.45) * (1 - seg(p, 0.8, 1));
+      const burst = Math.max(0, 1 - Math.abs(p - 0.47) / 0.07);
+      const hover = rise * (p > 0.45 ? 1 : 0);
+      return {
+        ...STILL,
+        squashY: 1 - 0.25 * kneel + 0.12 * burst + 0.04 * rise,
+        squashX: 1 + 0.12 * kneel - 0.05 * burst,
+        shakeY: -1.1 * rise + Math.sin(time * 6) * 0.05 * hover,
+        shakeX: tremble(0.03 * kneel + 0.06 * burst + 0.015 * hover),
+        spin: TAU * 2 * seg(p, 0.18, 0.45),
+        handX: -0.1 * rise,
+        handY: 0.2 * kneel - 1.2 * rise,
+        staffSpin: Math.sin(time * 4) * 0.2 * hover,
+        cape: 0.8 * burst + Math.sin(time * 14) * 0.35 * rise,
+        hatTip: 0.5 * burst + Math.sin(time * 11) * 0.2 * rise,
+        eyeGlow: "#ffffff",
+        glow: env > 0.05 ? color : null,
+        trail: rise > 0.1 && p < 0.47 ? 1 : 0,
+      };
+    }
     default:
       return STILL;
   }
@@ -322,6 +434,12 @@ function drawCastBehind(ctx: CanvasRenderingContext2D, pose: WizardPose, motion:
   switch (pose.castKind) {
     case "shield":
       drawRuneRing(ctx, p, color);
+      break;
+    case "firering":
+      drawRuneRing(ctx, Math.min(1, p * 1.4), color);
+      break;
+    case "ascend":
+      drawAscendBehind(ctx, p, color, t, motion);
       break;
     case "heal": {
       drawLightPillar(ctx, p, color);
@@ -677,6 +795,116 @@ function drawCastFront(ctx: CanvasRenderingContext2D, pose: WizardPose, motion: 
       break;
     }
 
+    case "missiles": {
+      // Lila energiagömbök keringenek a pálca hegye körül, és lövésenként felvillan a hegy
+      const charge = seg(p, 0, 0.25);
+      const left = p < 0.25 ? 5 : Math.max(0, 5 - Math.floor(((p - 0.25) / 0.5) * 5));
+      for (let i = 0; i < left; i++) {
+        const a = (i / 5) * Math.PI * 2 + t * 9;
+        const r = 0.45 * (1 - charge * 0.4);
+        glow(ctx, tip.x + Math.cos(a) * r, tip.y + Math.sin(a) * r * 0.7, 0.16, color, 0.9);
+        ctx.fillStyle = "#ede9fe";
+        ctx.beginPath();
+        ctx.arc(tip.x + Math.cos(a) * r, tip.y + Math.sin(a) * r * 0.7, 0.05, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const flash = p > 0.25 && p < 0.75 ? Math.abs(Math.sin(((p - 0.25) / 0.5) * Math.PI * 5)) : 0;
+      glow(ctx, tip.x, tip.y, 0.4 + flash * 0.5, color, 0.5 + flash * 0.5);
+      break;
+    }
+
+    case "firering": {
+      // Lángnyelvek csapnak fel a talp körül a becsapódás után
+      const q = seg(p, 0.5, 1);
+      if (p > 0.5) {
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2;
+          const r = 0.6 + q * 2.2;
+          const h = (0.5 + 0.5 * Math.sin(t * 20 + i * 2.1)) * 0.7 * (1 - q);
+          const x = Math.cos(a) * r;
+          const y = Math.sin(a) * r * 0.3;
+          const g = ctx.createLinearGradient(x, y, x, y - h - 0.1);
+          g.addColorStop(0, hexToRgba(color, 0.9 * (1 - q)));
+          g.addColorStop(1, hexToRgba("#fde047", 0));
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.moveTo(x - 0.12, y);
+          ctx.quadraticCurveTo(x - 0.05, y - h * 0.6, x, y - h - 0.1);
+          ctx.quadraticCurveTo(x + 0.05, y - h * 0.6, x + 0.12, y);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        glow(ctx, tip.x, tip.y, 0.5, color, 0.8 * seg(p, 0, 0.3));
+      }
+      break;
+    }
+
+    case "blink": {
+      // Lila szikrák pattannak szét a megérkezéskor
+      const q = seg(p, 0, 1);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 + i;
+        const r = 0.3 + q * 1.6;
+        ctx.fillStyle = hexToRgba(i % 2 ? "#ffffff" : color, 1 - q);
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r, -1.5 + Math.sin(a) * r, 0.07 * (1 - q), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      glow(ctx, 0, -1.5, 2 * (1 - q), "#ffffff", 0.7 * (1 - q));
+      break;
+    }
+
+    case "drain": {
+      // Vörös köd örvénylik befelé a pálca hegyébe
+      for (let i = 0; i < 14; i++) {
+        const k = (t * 1.5 + i / 14) % 1;
+        const a = i * 2.4 + t * 3;
+        const r = (1 - k) * 1.6 + 0.1;
+        ctx.fillStyle = hexToRgba(i % 3 ? color : "#fb7185", 0.7 * env * k);
+        ctx.beginPath();
+        ctx.arc(tip.x + Math.cos(a) * r, tip.y + Math.sin(a) * r * 0.6, 0.05 + k * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      glow(ctx, tip.x, tip.y, 0.55, color, 0.8 * env);
+      break;
+    }
+
+    case "ascend": {
+      drawCrackles(ctx, p, "#ffffff", t);
+      drawCrackles(ctx, p, color, t + 0.37);
+      // A kitörés pillanatában vakító villanás és szétszóródó fénytüskék
+      const flash = Math.max(0, 1 - Math.abs(p - 0.47) / 0.1);
+      if (flash > 0) {
+        glow(ctx, 0, -1.6 + motion.shakeY, 4.5 * flash, "#ffffff", flash);
+        ctx.strokeStyle = hexToRgba("#ffffff", flash);
+        ctx.lineWidth = 0.08;
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2;
+          const r0 = 0.8;
+          const r1 = 1.4 + flash * 3;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * r0, -1.6 + motion.shakeY + Math.sin(a) * r0);
+          ctx.lineTo(Math.cos(a) * r1, -1.6 + motion.shakeY + Math.sin(a) * r1);
+          ctx.stroke();
+        }
+      }
+      // Erőgyűjtés: fénypontok húzódnak be a testébe
+      if (p < 0.45) {
+        const q = p / 0.45;
+        for (let i = 0; i < 18; i++) {
+          const a = (i / 18) * Math.PI * 2 + t * 4;
+          const r = 2.6 * (1 - q) + 0.3;
+          ctx.fillStyle = hexToRgba(i % 2 ? "#ffffff" : color, q);
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * r, -1.5 + motion.shakeY + Math.sin(a) * r * 0.8, 0.05 + q * 0.04, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      glow(ctx, tip.x, tip.y, 0.9, color, env);
+      break;
+    }
+
     case "blackhole": {
       const h = tip.hand;
       const ox = h.x + 0.45;
@@ -785,6 +1013,8 @@ export function drawWizardFigure(
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
+  const aura = pose.aura ?? 0;
+  if (aura > 0) drawEmpoweredAura(ctx, aura, pose.time);
   if (pose.cast > 0) drawCastBehind(ctx, pose, motion, p);
 
   // Utóképek: a mozdulat korábbi pillanatai halványan, a varázslat színében ragyogva
@@ -798,7 +1028,8 @@ export function drawWizardFigure(
       ctx.restore();
     }
   }
-  drawBody(ctx, look, pose, motion, false);
+  // Felemelkedés alatt a szeme aranyban izzik (ha a varázslás nem ad más színt)
+  drawBody(ctx, look, pose, aura > 0 && !motion.eyeGlow ? { ...motion, eyeGlow: AURA_COLOR } : motion, false);
 
   if (pose.cast > 0) drawCastFront(ctx, pose, motion, p);
   ctx.restore();
@@ -829,6 +1060,85 @@ function drawBody(ctx: CanvasRenderingContext2D, look: ResolvedLook, pose: Wizar
   drawHead(ctx, look, pose, motion.eyeGlow);
   drawHat(ctx, look.hat, pose, motion.hatTip);
   drawArmAndStaff(ctx, look, pose, step, motion);
+  ctx.restore();
+}
+
+/** Felemelkedés a figura mögött: óriási fényoszlop, forgó fénypászmák, kettős rúnakör */
+function drawAscendBehind(ctx: CanvasRenderingContext2D, p: number, color: string, t: number, motion: CastMotion) {
+  const env = Math.sin(Math.PI * p);
+  drawLightPillar(ctx, p, color);
+  ctx.save();
+  ctx.scale(1.6, 1.2);
+  drawLightPillar(ctx, p, "#ffffff");
+  ctx.restore();
+  // Forgó fénypászmák a mágus mögül
+  ctx.save();
+  ctx.translate(0, -1.6 + motion.shakeY);
+  ctx.rotate(t * 0.8);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const len = 3.2 + Math.sin(t * 5 + i) * 0.6;
+    const g = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
+    g.addColorStop(0, hexToRgba(i % 2 ? "#ffffff" : color, 0.55 * env));
+    g.addColorStop(1, hexToRgba(color, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(a - 0.09) * len, Math.sin(a - 0.09) * len);
+    ctx.lineTo(Math.cos(a + 0.09) * len, Math.sin(a + 0.09) * len);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+  drawRuneRing(ctx, Math.min(1, p * 1.2), color);
+  ctx.save();
+  ctx.scale(1.7, 1.7);
+  drawRuneRing(ctx, Math.min(1, p * 0.9), "#fb923c");
+  ctx.restore();
+}
+
+/** A Felemelkedés tartós aurája: lobogó aranyláng a figura körül (a test mögött) */
+function drawEmpoweredAura(ctx: CanvasRenderingContext2D, strength: number, time: number) {
+  ctx.save();
+  // Lágy fényudvar
+  glow(ctx, 0, -1.5, 2.4, AURA_COLOR, 0.35 * strength);
+  // Lángnyelvek a sziluett körül
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    const flick = 0.5 + 0.5 * Math.sin(time * 13 + i * 1.7);
+    const bx = Math.cos(a) * 0.85;
+    const by = -1.5 + Math.sin(a) * 1.6;
+    const h = (0.35 + flick * 0.45) * strength;
+    const g = ctx.createLinearGradient(bx, by, bx, by - h);
+    g.addColorStop(0, hexToRgba(i % 3 ? AURA_COLOR : "#fb923c", 0.55 * strength));
+    g.addColorStop(1, hexToRgba("#ffffff", 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(bx - 0.18, by);
+    ctx.quadraticCurveTo(bx - 0.06, by - h * 0.6, bx + Math.sin(time * 9 + i) * 0.06, by - h);
+    ctx.quadraticCurveTo(bx + 0.06, by - h * 0.6, bx + 0.18, by);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Forgó rúnakör a talpak alatt
+  ctx.strokeStyle = hexToRgba(AURA_COLOR, 0.8 * strength);
+  ctx.lineWidth = 0.05;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 1.25, 0.38, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 0.035;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + time * 1.5;
+    const rx = Math.cos(a) * 1.05;
+    const ry = Math.sin(a) * 0.32;
+    ctx.beginPath();
+    ctx.moveTo(rx - 0.08, ry);
+    ctx.lineTo(rx, ry - 0.06);
+    ctx.lineTo(rx + 0.08, ry);
+    ctx.lineTo(rx, ry + 0.06);
+    ctx.closePath();
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

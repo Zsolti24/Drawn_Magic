@@ -1,0 +1,481 @@
+/* Belépés, játékmód, mentések, és a fiók a főmenüben */
+.gate {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+}
+
+.gate__stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gate__content {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 4rem 1.5rem 2rem;
+  background: radial-gradient(ellipse at 40% 50%, rgba(10, 7, 22, 0.82), rgba(10, 7, 22, 0.45) 70%);
+}
+
+.account-bar {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(20, 14, 40, 0.85);
+  border: 1px solid rgba(167, 123, 255, 0.35);
+  font-size: 0.85rem;
+}
+
+.account-bar__avatar {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #0f0b1e;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+.account-bar__btn,
+.menu__account-btn {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: rgba(167, 123, 255, 0.15);
+  border: 1px solid rgba(167, 123, 255, 0.4);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.account-bar__btn:hover,
+.menu__account-btn:hover {
+  background: rgba(167, 123, 255, 0.3);
+}
+
+button.back-btn {
+  font: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.soon {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1c1917;
+  background: var(--wait);
+  vertical-align: middle;
+}
+
+/* Bejelentkezés */
+.auth-card {
+  width: min(100%, 26rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem;
+  border-radius: 20px;
+  background: rgba(30, 22, 58, 0.92);
+  border: 1px solid rgba(167, 123, 255, 0.35);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.auth-card__head {
+  text-align: center;
+}
+
+.auth-card__head .title--hero {
+  font-size: 2.6rem;
+  white-space: nowrap;
+}
+
+.auth-card__head p {
+  margin: 0.3rem 0 0;
+}
+
+.auth-card__note {
+  margin: 0;
+  text-align: center;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: rgba(10, 7, 22, 0.6);
+}
+
+.tabs__tab {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.55rem;
+  border: none;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tabs__tab--on {
+  color: #fff;
+  background: var(--accent);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field__label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.field__input {
+  font: inherit;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 123, 255, 0.35);
+  background: rgba(10, 7, 22, 0.7);
+  color: var(--text);
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(94, 224, 255, 0.2);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.check input {
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
+}
+
+.auth-form__error {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #fecaca;
+  background: rgba(220, 38, 38, 0.2);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+
+.auth-form__submit {
+  width: 100%;
+}
+
+.auth-form__submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(167, 123, 255, 0.25);
+}
+
+.google-btn {
+  gap: 0.6rem;
+  width: 100%;
+  white-space: nowrap;
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
+}
+
+.google-btn .soon {
+  margin-left: 0.2rem;
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* Játékmód */
+.modes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: min(100%, 1100px);
+}
+
+.modes__head {
+  text-align: center;
+}
+
+.modes__head p {
+  margin: 0.3rem 0 0;
+  font-size: 1.1rem;
+}
+
+.modes__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.mode-card {
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 1.1rem;
+  border-radius: 18px;
+  color: var(--text);
+  background: rgba(34, 26, 64, 0.92);
+  border: 1px solid rgba(167, 123, 255, 0.35);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mode-card:not(:disabled):hover,
+.mode-card:not(:disabled):focus-visible {
+  transform: translateY(-5px);
+  border-color: #fde047;
+  outline: none;
+}
+
+.mode-card--soon {
+  cursor: not-allowed;
+}
+
+.mode-card--soon .mode-card__art {
+  filter: grayscale(0.7) brightness(0.6);
+}
+
+.mode-card__art {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 300 / 170;
+  border-radius: 12px;
+}
+
+.mode-card__title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  padding: 0 0.25rem;
+}
+
+.mode-card__desc {
+  font-size: 0.9rem;
+  color: var(--muted);
+  padding: 0 0.25rem;
+}
+
+/* Mentések */
+.saves {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: min(100%, 1100px);
+}
+
+.saves__head {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.saves__head p {
+  margin: 0.2rem 0 0;
+}
+
+.saves__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.save-card {
+  display: flex;
+  gap: 1rem;
+  padding: 0.9rem;
+  border-radius: 18px;
+  background: rgba(34, 26, 64, 0.92);
+  border: 1px solid rgba(167, 123, 255, 0.35);
+}
+
+.save-card--active {
+  border-color: #fde047;
+}
+
+.save-card__art {
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.save-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.save-card__actions .btn {
+  padding: 0.5rem 1rem;
+}
+
+.save-card__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.save-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.save-card__confirm p {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: #fecaca;
+}
+
+.save-card--empty {
+  font: inherit;
+  color: var(--text);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 200px;
+  background: rgba(20, 14, 40, 0.6);
+  border-style: dashed;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.save-card--empty:hover,
+.save-card--empty:focus-visible {
+  background: rgba(50, 36, 96, 0.8);
+  border-color: var(--accent-2);
+  outline: none;
+}
+
+.save-card__plus {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--accent-2);
+  border: 2px solid rgba(94, 224, 255, 0.5);
+}
+
+.save-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.7rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.save-stats dt {
+  color: var(--muted);
+}
+
+.save-stats dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+@media (max-width: 1000px) {
+  .modes__list,
+  .saves__list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Főmenü: fiók és mentés */
+.menu__account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.menu__account-who {
+  color: var(--text);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.row--start {
+  justify-content: flex-start;
+}
+
+/* A mindent feloldó teszt fiók jelzése */
+.unlock-all-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  color: #1c1917;
+  background: linear-gradient(90deg, #fde047, #f59e0b);
+  white-space: nowrap;
+}

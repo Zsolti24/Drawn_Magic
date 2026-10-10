@@ -1,4 +1,4 @@
-import { WIZARD_FEET, WIZARD_FIGURE, type Game, type Enemy, type Bolt, type Projectile } from "./Game";
+import { DEFAULT_CONFIG, ORB_LIFE, WIZARD_FEET, WIZARD_FIGURE, lootColor, orbColor, type Game, type Enemy, type Bolt, type Projectile } from "./Game";
 import type { Point } from "./types";
 import { drawGlyph } from "../draw/shapes";
 import { getTerrain, TERRAIN_BORDER, TERRAIN_OUTSIDE } from "../draw/terrain";
@@ -8,6 +8,7 @@ import { drawAirEffects, drawDizzyOverlay, drawFrozenOverlay, drawGroundEffects,
 import { castAnimSeconds, drawWizardFigure } from "../draw/wizard";
 import { drawCooldownIcon, drawManaIcon, drawSkullLineIcon, drawStopwatchLineIcon, drawTargetDummy } from "../draw/icons";
 import type { ResolvedLook } from "../data/wizardParts";
+import { gainXp, xpToNext } from "../data/stats";
 
 /** Egy varázslat megjelenése a varázslatsávban */
 export interface SpellLook {
@@ -30,6 +31,8 @@ export function renderGame(
   look: ResolvedLook,
   /** A pálya jele a felső sávban, pl. "1-1" */
   levelLabel: string,
+  /** A mágus szintje és tapasztalata (a stat-panelhez) */
+  player: PlayerHud,
   width: number,
   height: number,
   now: number,
@@ -73,8 +76,84 @@ export function renderGame(
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, width, height);
   }
+  drawLevelUp(ctx, game, player, toScreen(game.wizard.x, game.wizard.y + game.config.wizardRadius * WIZARD_FEET), width, height, unit, now);
   drawTopHud(ctx, game, levelLabel, unit);
+  drawStatsHud(ctx, game, player, unit);
   drawSpellBar(ctx, game, spells, width, height, unit, now);
+}
+
+/** A mágus szintje a pálya elején és a következő szinthez kellő XP */
+export interface PlayerHud {
+  level: number;
+  xp: number;
+  xpNext: number;
+}
+
+/** A szint élőben: a pálya eleji állás plusz a pályán felvett XP */
+function liveLevel(game: Game, player: PlayerHud) {
+  const next = gainXp(player.level, player.xp, 0, game.xp);
+  return { level: next.level, xp: next.xp, xpNext: xpToNext(next.level) };
+}
+
+/** Szintlépés pillanata pályánként (a látványhoz) */
+const levelUps = new WeakMap<Game, { level: number; at: number }>();
+
+/** Szintlépés játék közben: arany gyűrűk a mágus körül és felirat a képernyő felső részén */
+function drawLevelUp(ctx: CanvasRenderingContext2D, game: Game, player: PlayerHud, wizard: Point, width: number, height: number, unit: number, now: number) {
+  const level = liveLevel(game, player).level;
+  const state = levelUps.get(game) ?? { level, at: -Infinity };
+  if (level > state.level) {
+    state.level = level;
+    state.at = now;
+  }
+  levelUps.set(game, state);
+  const age = (now - state.at) / 1000;
+  if (age > 2.4) return;
+
+  ctx.save();
+  // Táguló aranygyűrűk a mágus körül
+  for (let k = 0; k < 3; k++) {
+    const q = (age - k * 0.15) / 0.9;
+    if (q <= 0 || q >= 1) continue;
+    ctx.strokeStyle = `rgba(253,224,71,${1 - q})`;
+    ctx.lineWidth = Math.max(2, unit * 0.012 * (1 - q));
+    ctx.beginPath();
+    ctx.ellipse(wizard.x, wizard.y, unit * (0.05 + q * 0.45), unit * (0.02 + q * 0.18), 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // Fényoszlop a máguson
+  const pillar = Math.max(0, 1 - age / 1.2);
+  if (pillar > 0) {
+    const g = ctx.createLinearGradient(0, wizard.y, 0, wizard.y - unit * 0.6);
+    g.addColorStop(0, `rgba(253,224,71,${0.5 * pillar})`);
+    g.addColorStop(1, "rgba(253,224,71,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(wizard.x - unit * 0.06, wizard.y - unit * 0.6, unit * 0.12, unit * 0.6);
+  }
+  // Felirat: beugrik, aztán elhalványul
+  const pop = age < 0.25 ? 0.6 + (age / 0.25) * 0.5 : age < 0.4 ? 1.1 - ((age - 0.25) / 0.15) * 0.1 : 1;
+  const alpha = age > 1.8 ? 1 - (age - 1.8) / 0.6 : 1;
+  ctx.globalAlpha = Math.max(0, alpha);
+  ctx.translate(width / 2, height * 0.22);
+  ctx.scale(pop, pop);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `900 ${Math.round(unit * 0.11)}px ${HUD_FONT}`;
+  ctx.lineWidth = Math.max(3, unit * 0.012);
+  ctx.strokeStyle = "rgba(60,30,0,0.85)";
+  ctx.strokeText("SZINTLÉPÉS!", 0, 0);
+  const grad = ctx.createLinearGradient(0, -unit * 0.06, 0, unit * 0.06);
+  grad.addColorStop(0, "#fef9c3");
+  grad.addColorStop(1, "#f59e0b");
+  ctx.fillStyle = grad;
+  ctx.fillText("SZINTLÉPÉS!", 0, 0);
+  ctx.font = `700 ${Math.round(unit * 0.04)}px ${HUD_FONT}`;
+  ctx.lineWidth = Math.max(2, unit * 0.008);
+  const sub = `${level}. szint · új statpontok a menüben`;
+  ctx.strokeText(sub, 0, unit * 0.09);
+  ctx.fillStyle = "#fef3c7";
+  ctx.fillText(sub, 0, unit * 0.09);
+  ctx.restore();
 }
 
 /** A pálya a kamerából nézve: rét, effektek, alakok (HUD nélkül). unit = képpont / egység */
@@ -107,6 +186,8 @@ export function drawWorld(
   const ground = getTerrain(game.config.terrain, ww, wh, unit);
   ctx.drawImage(ground, -ww - TERRAIN_BORDER, -wh - TERRAIN_BORDER, (ww + TERRAIN_BORDER) * 2, (wh + TERRAIN_BORDER) * 2);
   drawGroundEffects(ctx, game, now);
+  drawLootGround(ctx, game, now);
+  drawOrbs(ctx, game, now);
 
   // Mélységi sorrend: ami lejjebb van, az kerül előre
   const actors: { y: number; draw: () => void }[] = game.enemies.map((enemy) => ({
@@ -117,7 +198,212 @@ export function drawWorld(
   actors.sort((p, q) => p.y - q.y);
   for (const actor of actors) actor.draw();
   drawEffects(ctx, game, now);
+  drawLootAir(ctx, game, now);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+/** Leesett tárgy a földön: lüktető fényfolt és forgó rúnakör (az alakok alatt) */
+function drawLootGround(ctx: CanvasRenderingContext2D, game: Game, now: number) {
+  const t = now / 1000;
+  for (const loot of game.loot) {
+    if (loot.t < 1) continue;
+    const color = lootColor(loot.rarity);
+    const appear = Math.min(1, loot.age / 0.4);
+    const pulse = 1 + Math.sin(t * 3) * 0.08;
+    const R = 0.2 * appear * pulse;
+    const glow = ctx.createRadialGradient(loot.x, loot.y, 0, loot.x, loot.y, R * 1.6);
+    glow.addColorStop(0, hexToRgba(color, 0.55));
+    glow.addColorStop(1, hexToRgba(color, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(loot.x, loot.y, R * 1.6, R * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Forgó rúnakör: két ellipszis és rúnajelek
+    ctx.save();
+    ctx.translate(loot.x, loot.y);
+    ctx.scale(1, 0.45);
+    ctx.rotate(t * 0.9);
+    ctx.strokeStyle = hexToRgba(color, 0.85 * appear);
+    ctx.lineWidth = 0.006;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 0.004;
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.78, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const rx = Math.cos(a) * R * 0.89;
+      const ry = Math.sin(a) * R * 0.89;
+      ctx.beginPath();
+      ctx.moveTo(rx - 0.012, ry);
+      ctx.lineTo(rx, ry - 0.016);
+      ctx.lineTo(rx + 0.012, ry);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/** Leesett tárgy a levegőben: repülés közben forgó ereklye csóvával; a földön égig érő fényoszlop,
+ *  lebegő, forgó ereklye kérdőjellel és körülötte keringő szikrák (az alakok fölött) */
+function drawLootAir(ctx: CanvasRenderingContext2D, game: Game, now: number) {
+  const t = now / 1000;
+  for (const loot of game.loot) {
+    const color = lootColor(loot.rarity);
+    if (loot.t < 1) {
+      // Ívben repül a szörny helyéről a földre
+      const q = loot.t;
+      const x = loot.fromX + (loot.x - loot.fromX) * q;
+      const y = loot.fromY + (loot.y - loot.fromY) * q - Math.sin(Math.PI * q) * 0.28;
+      for (let k = 1; k <= 5; k++) {
+        const p = Math.max(0, q - k * 0.04);
+        const tx = loot.fromX + (loot.x - loot.fromX) * p;
+        const ty = loot.fromY + (loot.y - loot.fromY) * p - Math.sin(Math.PI * p) * 0.28;
+        ctx.fillStyle = hexToRgba(color, 0.5 - k * 0.08);
+        ctx.beginPath();
+        ctx.arc(tx, ty, 0.02 - k * 0.002, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawRelic(ctx, x, y, 0.032, color, t * 14);
+      continue;
+    }
+    const appear = Math.min(1, loot.age / 0.4);
+    // Fényoszlop: széles halvány és keskeny fényes sáv
+    const beamH = 1.1 * appear;
+    for (const [w, a] of [
+      [0.07, 0.22],
+      [0.025, 0.55],
+    ]) {
+      const g = ctx.createLinearGradient(0, loot.y, 0, loot.y - beamH);
+      g.addColorStop(0, hexToRgba(color, a));
+      g.addColorStop(0.7, hexToRgba(color, a * 0.35));
+      g.addColorStop(1, hexToRgba(color, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(loot.x - w / 2, loot.y - beamH, w, beamH);
+    }
+    // Lebegő ereklye és keringő szikrák (a hátsó fél előtte, az első utána)
+    const hover = loot.y - 0.09 + Math.sin(t * 2.4) * 0.014;
+    const orbit = (front: boolean) => {
+      for (let i = 0; i < 5; i++) {
+        const a = t * 2 + (i / 5) * Math.PI * 2;
+        if (Math.sin(a) > 0 !== front) continue;
+        sparkleAt(ctx, loot.x + Math.cos(a) * 0.06, hover + Math.sin(a) * 0.02, 0.008, i % 2 ? "#ffffff" : color);
+      }
+    };
+    orbit(false);
+    drawRelic(ctx, loot.x, hover, 0.046 * appear, color, t * 1.6);
+    orbit(true);
+  }
+}
+
+/** Ereklye: forgó, fénylő kristály egy kérdőjellel (hogy mi van benne, titok) */
+function drawRelic(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, color: string, spin: number) {
+  if (s <= 0) return;
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, s * 3);
+  halo.addColorStop(0, hexToRgba(color, 0.6));
+  halo.addColorStop(1, hexToRgba(color, 0));
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(x, y, s * 3, 0, Math.PI * 2);
+  ctx.fill();
+  // A forgás a szélességen látszik (oldalnézetben elkeskenyedik)
+  const wide = Math.max(0.25, Math.abs(Math.cos(spin)));
+  const body = ctx.createLinearGradient(x - s, y - s * 1.4, x + s, y + s * 1.4);
+  body.addColorStop(0, "#ffffff");
+  body.addColorStop(0.35, color);
+  body.addColorStop(1, mixHex(color, "#000000", 0.45));
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(x, y - s * 1.45);
+  ctx.lineTo(x + s * wide, y - s * 0.2);
+  ctx.lineTo(x, y + s * 1.45);
+  ctx.lineTo(x - s * wide, y - s * 0.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.8)";
+  ctx.lineWidth = s * 0.08;
+  ctx.stroke();
+  // Kérdőjel képpontos betűmérettel (a világkoordináta nagyítását kiegyenlítve)
+  if (wide > 0.55) {
+    const k = ctx.getTransform().a || 1;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1 / k, 1 / k);
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.font = `900 ${Math.max(8, Math.round(s * k * 1.3))}px ${HUD_FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("?", 0, 0);
+    ctx.restore();
+  }
+}
+
+function sparkleAt(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 2);
+  ctx.quadraticCurveTo(x, y, x + r * 2, y);
+  ctx.quadraticCurveTo(x, y, x, y + r * 2);
+  ctx.quadraticCurveTo(x, y, x - r * 2, y);
+  ctx.quadraticCurveTo(x, y, x, y - r * 2);
+  ctx.fill();
+}
+
+/** Tapasztalatgyöngyök a földön: izzó, lebegő drágakő; repülés közben csóvát húz, lejárat előtt villog */
+function drawOrbs(ctx: CanvasRenderingContext2D, game: Game, now: number) {
+  const t = now / 1000;
+  for (const orb of game.orbs) {
+    const color = orbColor(orb.value);
+    const size = 0.016 + Math.min(0.014, orb.value * 0.0014);
+    const left = ORB_LIFE - orb.age;
+    if (left < 4 && Math.floor(t * 8) % 2 === 0) continue;
+    const appear = Math.min(1, orb.age / 0.15);
+    const bob = orb.magnet ? 0 : Math.sin(t * 4 + orb.phase) * 0.006;
+    const x = orb.x;
+    const y = orb.y - 0.012 + bob;
+    // Árnyék a földön
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(orb.x, orb.y + 0.004, size * 0.9, size * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Csóva a mágus felé repülve
+    if (orb.magnet) {
+      ctx.strokeStyle = hexToRgba(color, 0.45);
+      ctx.lineWidth = size * 1.2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - orb.vx * 0.05, y - orb.vy * 0.05);
+      ctx.stroke();
+    }
+    // Fényudvar
+    const halo = ctx.createRadialGradient(x, y, 0, x, y, size * 3.2);
+    halo.addColorStop(0, hexToRgba(color, 0.55 * appear));
+    halo.addColorStop(1, hexToRgba(color, 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(x, y, size * 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Drágakő: rombusz, világos csúccsal
+    const s = size * appear * (1 + Math.sin(t * 6 + orb.phase) * 0.08);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y - s * 1.3);
+    ctx.lineTo(x + s, y);
+    ctx.lineTo(x, y + s * 1.3);
+    ctx.lineTo(x - s, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.beginPath();
+    ctx.moveTo(x, y - s * 1.3);
+    ctx.lineTo(x + s * 0.45, y - s * 0.2);
+    ctx.lineTo(x - s * 0.25, y - s * 0.1);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 /** A képernyőn kívüli közeli ellenfelek jelzése a képernyő szélén */
@@ -158,6 +444,40 @@ function drawOffscreenMarkers(
     ctx.lineTo(-size * 0.7, -size * 0.8);
     ctx.lineTo(-size * 0.35, 0);
     ctx.lineTo(-size * 0.7, size * 0.8);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // A leesett tárgyak is látszanak a szélén: nagyobb, lüktető, a ritkaság színében, arany kerettel
+  const pulse = 1 + Math.sin(performance.now() / 160) * 0.15;
+  for (const loot of game.loot) {
+    if (loot.t < 1 || game.isVisible(loot.x, loot.y)) continue;
+    const p = toScreen(loot.x, loot.y);
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    const t = Math.min((cx - pad * 1.6) / Math.abs(dx || 1e-6), (cy - pad * 1.6) / Math.abs(dy || 1e-6));
+    const s = size * 1.35 * pulse;
+    ctx.save();
+    ctx.translate(cx + dx * t, cy + dy * t);
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 2.2);
+    halo.addColorStop(0, hexToRgba(lootColor(loot.rarity), 0.55));
+    halo.addColorStop(1, hexToRgba(lootColor(loot.rarity), 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, s * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.rotate(Math.atan2(dy, dx));
+    ctx.fillStyle = lootColor(loot.rarity);
+    ctx.strokeStyle = "#fde68a";
+    ctx.lineWidth = Math.max(2, s * 0.2);
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(s, 0);
+    ctx.lineTo(-s * 0.7, -s * 0.8);
+    ctx.lineTo(-s * 0.35, 0);
+    ctx.lineTo(-s * 0.7, s * 0.8);
     ctx.closePath();
     ctx.stroke();
     ctx.fill();
@@ -245,6 +565,7 @@ function drawWizard(ctx: CanvasRenderingContext2D, game: Game, look: ResolvedLoo
       cast: cast ? 1 - cast.age / castLength : 0,
       castColor: cast?.spell.color ?? null,
       castKind: cast?.spell.id ?? null,
+      aura: empoweredStrength(game),
     },
     0,
     feetY,
@@ -255,6 +576,13 @@ function drawWizard(ctx: CanvasRenderingContext2D, game: Game, look: ResolvedLoo
   drawShieldBubble(ctx, game, now);
 
   ctx.restore();
+}
+
+/** A Felemelkedés aurájának erőssége (0..1): az elején felfut, a végén elhalványul */
+export function empoweredStrength(game: Game) {
+  const e = game.wizard.empowered;
+  if (!e) return 0;
+  return Math.min(1, (e.duration - e.left) / 0.4, e.left / 0.8);
 }
 
 function drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, game: Game, now: number) {
@@ -485,7 +813,7 @@ function drawEnemyHpBar(ctx: CanvasRenderingContext2D, enemy: Enemy, cx: number,
   ctx.fill();
 }
 
-/** Adatsáv a bal felső sarokban: menü, pályajel, eltelt idő és az elpusztított ellenfelek száma */
+/** Adatsáv a bal felső sarokban: menü, pályajel, eltelt idő és a legyőzött ellenfelek száma */
 function drawTopHud(ctx: CanvasRenderingContext2D, game: Game, label: string, unit: number) {
   const h = Math.max(38, unit * 0.095);
   const y = Math.max(12, unit * 0.03);
@@ -498,15 +826,15 @@ function drawTopHud(ctx: CanvasRenderingContext2D, game: Game, label: string, un
 
   const seconds = Math.floor(game.time);
   const time = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-  const goal = game.config.killGoal;
-  const kills = goal > 0 ? `${game.defeated} / ${goal}` : String(game.kills);
+  // A pálya hosszát és a hátralévő szörnyeket szándékosan nem mutatjuk
+  const kills = String(game.kills);
 
   ctx.font = labelFont;
   const chipW = ctx.measureText(label).width + h * 0.5;
   ctx.font = font;
   // Az időt a leghosszabb számjegyekkel mérjük, hogy a sáv ne ugráljon
   const timeW = ctx.measureText(time.replace(/\d/g, "0")).width;
-  const killsW = Math.max(ctx.measureText(goal > 0 ? `000 / ${goal}` : "000").width, ctx.measureText(kills).width);
+  const killsW = Math.max(ctx.measureText("000").width, ctx.measureText(kills).width);
   const menuW = icon * 1.1;
   const totalW = pad * 2 + menuW + divider + chipW + divider * 2 + icon + gap + timeW + icon + gap + killsW;
   const x = y;
@@ -565,17 +893,77 @@ function drawTopHud(ctx: CanvasRenderingContext2D, game: Game, label: string, un
   cursor += icon + gap;
   ctx.fillStyle = HUD_TEXT;
   ctx.fillText(kills, cursor, cy + 1);
-  // Haladás a pálya végéig: vékony csík a panel alján
-  if (goal > 0) {
-    const inset = h * 0.45;
-    const barW = totalW - inset * 2;
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
-    roundRect(ctx, x + inset, y + h - 4, barW, 2.5, 1.25);
+  ctx.restore();
+}
+
+/** Stat-panel a bal felső sarokban: szint és XP-csík (a pályán gyűjtött XP-vel), alatta a statok értékei */
+function drawStatsHud(ctx: CanvasRenderingContext2D, game: Game, player: PlayerHud, unit: number) {
+  const c = game.config;
+  const power = game.wizard.empowered;
+  const fmt = (n: number, digits = 1) => n.toLocaleString("hu-HU", { maximumFractionDigits: digits });
+  const signedPct = (f: number) => `${f >= 0 ? "+" : "−"}${Math.round(Math.abs(f) * 100)}%`;
+  const rows: { label: string; value: string; color: string; boosted: boolean }[] = [
+    { label: "Sebzés", value: signedPct(c.damageMult * (power?.damageMult ?? 1) - 1), color: "#f97316", boosted: !!power },
+    { label: "Élet", value: `${Math.ceil(game.wizard.hp)} / ${c.maxHp}`, color: "#fb7185", boosted: false },
+    { label: "Mana", value: `${Math.floor(game.wizard.mana)} / ${c.maxMana}`, color: "#60a5fa", boosted: false },
+    { label: "Mana / mp", value: fmt(c.manaRegen * (power?.manaRegenMult ?? 1)), color: "#22d3ee", boosted: !!power },
+    { label: "Mozgás", value: signedPct(c.wizardSpeed / DEFAULT_CONFIG.wizardSpeed - 1), color: "#a3e635", boosted: false },
+    { label: "Töltési idő", value: signedPct(c.cooldownMult / (power?.cooldownMult ?? 1) - 1), color: "#c084fc", boosted: !!power },
+  ];
+
+  const s = Math.max(0.8, Math.min(1.25, unit / 420));
+  const pad = 12 * s;
+  const lineH = 19 * s;
+  const w = 196 * s;
+  const headH = 40 * s;
+  const h = pad * 2 + headH + rows.length * lineH;
+  // Bal felső sarok, a pályajel és az idő sávja alatt (annak méreteivel egyezően igazítva)
+  const topBarY = Math.max(12, unit * 0.03);
+  const topBarH = Math.max(38, unit * 0.095);
+  const x = topBarY;
+  const y = topBarY + topBarH + 10 * s;
+  drawGlassPanel(ctx, x, y, w, h, 12 * s);
+
+  ctx.save();
+  ctx.textBaseline = "middle";
+  // Szint és XP-csík élőben: a felvett gyöngyökkel azonnal nő, szintlépés játék közben
+  const live = liveLevel(game, player);
+  const frac = live.xp / live.xpNext;
+  const flash = Math.max(0, 1 - game.lastPickup / 0.35);
+  ctx.font = `800 ${Math.round(14 * s)}px ${HUD_FONT}`;
+  ctx.fillStyle = HUD_TEXT;
+  ctx.textAlign = "left";
+  ctx.fillText(`${live.level}. szint`, x + pad, y + pad + 8 * s);
+  ctx.font = `700 ${Math.round(11 * s)}px ${HUD_FONT}`;
+  ctx.textAlign = "right";
+  ctx.fillStyle = flash > 0 ? "#ffffff" : "#86efac";
+  ctx.fillText(`+${game.xp} XP`, x + w - pad, y + pad + 8 * s);
+  const barY = y + pad + 22 * s;
+  const barW = w - pad * 2;
+  const barH = 6 * s;
+  ctx.fillStyle = "rgba(255,255,255,0.1)";
+  roundRect(ctx, x + pad, barY, barW, barH, barH / 2);
+  ctx.fill();
+  ctx.fillStyle = flash > 0 ? mixHex("#86efac", "#ffffff", flash) : "#86efac";
+  roundRect(ctx, x + pad, barY, Math.max(barH, barW * Math.min(1, frac)), barH, barH / 2);
+  ctx.fill();
+
+  // Statok soronként: színes pötty, név, érték (Felemelkedés alatt aranyban)
+  rows.forEach((row, i) => {
+    const cy = y + pad + headH + lineH * (i + 0.5);
+    ctx.fillStyle = row.color;
+    ctx.beginPath();
+    ctx.arc(x + pad + 4 * s, cy, 4 * s, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#a3e635";
-    roundRect(ctx, x + inset, y + h - 4, Math.max(2.5, barW * Math.min(1, game.defeated / goal)), 2.5, 1.25);
-    ctx.fill();
-  }
+    ctx.font = `500 ${Math.round(12 * s)}px ${HUD_FONT}`;
+    ctx.textAlign = "left";
+    ctx.fillStyle = HUD_MUTED;
+    ctx.fillText(row.label, x + pad + 14 * s, cy);
+    ctx.font = `700 ${Math.round(12 * s)}px ${HUD_FONT}`;
+    ctx.textAlign = "right";
+    ctx.fillStyle = row.boosted ? "#fde047" : HUD_TEXT;
+    ctx.fillText(row.value, x + w - pad, cy);
+  });
   ctx.restore();
 }
 
@@ -701,10 +1089,19 @@ function spaced(text: string) {
 }
 
 /** Az életerő és a mana mérője a varázslatcsempék két oldalán, közös panelen */
+/** A mérőpanel méretei: két kerek mérő egymás mellett (élet, mana) */
+function gaugePanelSize(base: number) {
+  const r = base * GAUGE_RATIO;
+  const pad = base * 0.16;
+  const gap = base * GAUGE_GAP_RATIO;
+  return { r, pad, gap, w: pad * 2 + r * 4 + gap, h: pad * 2 + r * 2 };
+}
+
 function drawHudGauges(
   ctx: CanvasRenderingContext2D,
   game: Game,
-  layout: { left: number; bandTop: number; totalW: number; base: number },
+  /** A panel bal széle és függőleges közepe, alapméret */
+  layout: { x: number; cy: number; base: number },
   now: number,
 ) {
   const { maxHp, maxMana } = game.config;
@@ -716,15 +1113,12 @@ function drawHudGauges(
   trail.mana = mana >= trail.mana ? mana : Math.max(mana, trail.mana - maxMana * 0.012);
   trails.set(game, trail);
 
-  const { left, bandTop, totalW, base } = layout;
-  const r = base * GAUGE_RATIO;
-  const gap = base * GAUGE_GAP_RATIO;
-  const pad = base * 0.16;
-  const cy = bandTop + base / 2;
-  const hpX = left - gap - r;
-  const manaX = left + totalW + gap + r;
+  const { x, cy, base } = layout;
+  const { r, pad, gap, w, h } = gaugePanelSize(base);
+  const hpX = x + pad + r;
+  const manaX = hpX + r * 2 + gap;
 
-  drawGlassPanel(ctx, hpX - r - pad, bandTop - pad, manaX - hpX + (r + pad) * 2, base + pad * 2, base * 0.28);
+  drawGlassPanel(ctx, x, cy - h / 2, w, h, base * 0.28);
 
   const lowHp = hp > 0 && hp / maxHp <= 0.3;
   drawGauge(ctx, {
@@ -759,8 +1153,9 @@ function drawHudGauges(
   });
 }
 
-/** A varázslatcsempék egymás mellett, középen alul. Akárhány varázslat lehet:
- *  ha nem férnek ki teljes méretben, kisebbek és egyszerűbbek lesznek. */
+/** Alsó HUD: bal alsó sarokban az élet és a mana mérője (mindig a helyén marad), mellette a
+ *  varázslatcsempék. Akárhány varázslat lehet: ha egy sorban túl kicsik lennének, két sorba
+ *  törnek; ha így sem férnek ki teljes méretben, kisebbek és egyszerűbbek lesznek. */
 function drawSpellBar(
   ctx: CanvasRenderingContext2D,
   game: Game,
@@ -772,25 +1167,46 @@ function drawSpellBar(
 ) {
   const mana = game.wizard.mana;
   // A HUD alapmérete (mérők, panel); a csempék legfeljebb ekkorák
-  const base = Math.max(72, unit * 0.19);
-  const margin = Math.max(16, unit * 0.04);
-  const gaugeSpace = base * GAUGE_RATIO * 2 + base * GAUGE_GAP_RATIO + base * 0.16;
-  const maxRowW = Math.max(base, width - 2 * (margin + gaugeSpace));
+  const base = Math.max(64, unit * 0.17);
+  const margin = Math.max(14, unit * 0.035);
+  const bottom = height - Math.max(18, unit * 0.045);
+  const panel = gaugePanelSize(base);
+  const regionLeft = margin + panel.w + margin;
+  const regionW = Math.max(base, width - regionLeft - margin);
   const n = spells.length;
-  const gapRatio = 0.14;
-  const slot = n > 0 ? Math.max(34, Math.min(base, maxRowW / (n + (n - 1) * gapRatio))) : base;
+  const gapRatio = 0.12;
+  const fit = (count: number, cap: number) => Math.min(cap, regionW / (count + (count - 1) * gapRatio));
+  // Egy sor, ha elég nagyok így a csempék; különben két sor
+  let rows = 1;
+  let perRow = Math.max(1, n);
+  let slot = fit(perRow, base);
+  if (n > 1 && slot < 60) {
+    rows = 2;
+    perRow = Math.ceil(n / 2);
+    slot = fit(perRow, base * 0.85);
+  }
+  slot = Math.max(32, slot);
   const gap = slot * gapRatio;
-  const totalW = n > 0 ? n * slot + (n - 1) * gap : base * 0.6;
-  const bandTop = height - base - Math.max(26, unit * 0.07);
-  const top = bandTop + (base - slot) / 2;
-  const left = (width - totalW) / 2;
+  const barH = rows * slot + (rows - 1) * gap;
+  const barTop = bottom - barH;
+  const barCy = barTop + barH / 2;
   // Teljes: jel, név, mana és idő; kompakt: név nélkül; mini: csak a jel
   const mode = slot >= 66 ? "full" : slot >= 48 ? "compact" : "mini";
 
-  drawHudGauges(ctx, game, { left, bandTop, totalW, base }, now);
+  drawHudGauges(ctx, game, { x: margin, cy: Math.min(barCy, bottom - panel.h / 2), base }, now);
+  drawEmpoweredBanner(ctx, game, width / 2, barTop - base * 0.4, base, now);
+
+  /** A sor bal széle: a képernyő közepére igazítva, ha elfér, különben a mérőpanel mellé */
+  const rowLeft = (row: number) => {
+    const count = row < rows - 1 ? perRow : n - perRow * (rows - 1);
+    const rowW = count * slot + (count - 1) * gap;
+    return Math.min(Math.max(regionLeft, (width - rowW) / 2), width - margin - rowW);
+  };
 
   spells.forEach((spell, i) => {
-    const x = left + i * (slot + gap);
+    const row = Math.floor(i / perRow);
+    const x = rowLeft(row) + (i % perRow) * (slot + gap);
+    const top = barTop + row * (slot + gap);
     const cooling = game.cooldownLeft(spell.id);
     const ready = mana >= spell.mana && cooling <= 0;
     const radius = slot * 0.16;
@@ -995,6 +1411,42 @@ function drawSpellBar(
     }
     ctx.restore();
   });
+}
+
+/** Felemelkedés alatt a varázslatsáv fölött: felirat és fogyó aranycsík */
+function drawEmpoweredBanner(ctx: CanvasRenderingContext2D, game: Game, cx: number, cy: number, base: number, now: number) {
+  const e = game.wizard.empowered;
+  if (!e) return;
+  const strength = empoweredStrength(game);
+  const w = base * 3.2;
+  const h = base * 0.36;
+  const x = cx - w / 2;
+  const y = cy - h / 2;
+  const pulse = 0.75 + 0.25 * Math.sin(now / 90);
+  ctx.save();
+  ctx.globalAlpha = strength;
+  drawGlassPanel(ctx, x, y, w, h, h / 2);
+  // Fogyó csík
+  const frac = Math.max(0, e.left / e.duration);
+  const inset = h * 0.16;
+  const bar = ctx.createLinearGradient(x, 0, x + w, 0);
+  bar.addColorStop(0, "#fb923c");
+  bar.addColorStop(1, "#fde047");
+  ctx.fillStyle = bar;
+  ctx.globalAlpha = strength * 0.35;
+  roundRect(ctx, x + inset, y + inset, (w - inset * 2) * frac, h - inset * 2, (h - inset * 2) / 2);
+  ctx.fill();
+  ctx.globalAlpha = strength;
+  ctx.strokeStyle = hexToRgba("#fde047", 0.5 + 0.4 * pulse);
+  ctx.lineWidth = Math.max(1.5, h * 0.06);
+  roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, h / 2);
+  ctx.stroke();
+  ctx.font = `800 ${Math.round(h * 0.48)}px ${HUD_FONT}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#fef9c3";
+  ctx.fillText(`${spaced("FELEMELKEDÉS")}  ${e.left.toFixed(1).replace(".", ",")}`, cx, cy + 1);
+  ctx.restore();
 }
 
 /** A legutóbbi varázslási kísérlet (varázslat és eredmény szerint szűrve), ha elég friss */

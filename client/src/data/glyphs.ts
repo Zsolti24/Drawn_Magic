@@ -11,6 +11,8 @@ export interface GlyphDef {
   alternates?: Point[][];
   /** Zárt alakzat: bárhonnan és bármelyik irányba rajzolható */
   closed?: boolean;
+  /** Saját felismerési küszöb (0..1): a bonyolult, nehezen pontosan rajzolható jeleknél enyhébb */
+  minScore?: number;
 }
 
 function circlePath(segments = 32): Point[] {
@@ -79,13 +81,62 @@ function heartPath(segments = 48): Point[] {
   return raw.map((p) => ({ x: (p.x - minX) / w, y: (p.y - minY) / h }));
 }
 
-/** S betű egy vonással, a jobb felső végétől; tükrözve fordított S */
-function sPath(mirror = false, segments = 40): Point[] {
-  return Array.from({ length: segments + 1 }, (_, i) => {
-    const u = i / segments;
-    const x = 0.5 - 0.4 * Math.sin(Math.PI * 2 * (u * 1.25 - 0.125));
-    return { x: mirror ? 1 - x : x, y: 0.05 + 0.9 * u };
+/** Zárt alakzat simítása (mozgó átlag, körbe): a sarkok és csúcsok lekerekednek */
+function smoothPath(path: Point[], window: number): Point[] {
+  const ring = path.slice(0, -1);
+  const n = ring.length;
+  const out = ring.map((_, i) => {
+    let x = 0;
+    let y = 0;
+    for (let k = -window; k <= window; k++) {
+      const p = ring[(i + k + n) % n];
+      x += p.x;
+      y += p.y;
+    }
+    return { x: x / (window * 2 + 1), y: y / (window * 2 + 1) };
   });
+  out.push({ ...out[0] });
+  return out;
+}
+
+/** Egyenes vonal a középponton át, adott szögben (fok) */
+function linePath(deg: number): Point[] {
+  const a = (deg * Math.PI) / 180;
+  return [
+    { x: 0.5 - Math.cos(a) / 2, y: 0.5 - Math.sin(a) / 2 },
+    { x: 0.5 + Math.cos(a) / 2, y: 0.5 + Math.sin(a) / 2 },
+  ];
+}
+
+/** Omega (Ω): bal láb, nagy ív a tetején át, jobb láb */
+function omegaPath(segments = 40): Point[] {
+  const arc = Array.from({ length: segments + 1 }, (_, i) => {
+    const a = ((120 + (i / segments) * 300) * Math.PI) / 180;
+    return { x: 0.5 + 0.42 * Math.cos(a), y: 0.48 + 0.42 * Math.sin(a) };
+  });
+  return [{ x: 0, y: 0.92 }, { x: 0.29, y: 0.92 }, ...arc, { x: 0.71, y: 0.92 }, { x: 1, y: 0.92 }];
+}
+
+/** Hurok: felfelé ível, a tetején egy hurkot vet, és lefelé folytatódik; tükrözve a másik irányba hurkol */
+function loopPath(mirror = false, segments = 48): Point[] {
+  const raw = Array.from({ length: segments + 1 }, (_, i) => {
+    const u = i / segments;
+    return { x: u + 0.3 * Math.sin(2 * Math.PI * u), y: 0.9 - 0.8 * Math.sin(Math.PI * u) ** 2 };
+  });
+  const xs = raw.map((p) => p.x);
+  const minX = Math.min(...xs);
+  const w = Math.max(...xs) - minX;
+  return raw.map((p) => {
+    const x = (p.x - minX) / w;
+    return { x: mirror ? 1 - x : x, y: p.y };
+  });
+}
+
+/** Zárt sokszög csúcsai: minden csúcsból indulva, mindkét irányba (a rajz többnyire egy csúcsból indul) */
+function polygonStarts(vertices: Point[]): Point[][] {
+  return vertices.flatMap((_, start) =>
+    [vertices, [...vertices].reverse()].map((v) => polygonPath([...v.slice(start), ...v.slice(0, start)])),
+  );
 }
 
 const TRIANGLE: Point[] = [
@@ -94,55 +145,70 @@ const TRIANGLE: Point[] = [
   { x: 0.05, y: 0.92 },
 ];
 
+/** Szigma (Σ): felső él jobbról balra, csúcs befelé, alsó él balról jobbra */
+const SIGMA: Point[] = [
+  { x: 0.95, y: 0.05 },
+  { x: 0.05, y: 0.05 },
+  { x: 0.55, y: 0.5 },
+  { x: 0.05, y: 0.95 },
+  { x: 0.95, y: 0.95 },
+];
+
+/** Homokóra: felső él, átló, alsó él, átló vissza (a két átló keresztezi egymást) */
+const HOURGLASS: Point[] = [
+  { x: 0.1, y: 0.05 },
+  { x: 0.9, y: 0.05 },
+  { x: 0.1, y: 0.95 },
+  { x: 0.9, y: 0.95 },
+];
+
+/** Ötágú csillag egy vonással: a csúcsok kettesével ugorva */
+const STAR: Point[] = Array.from({ length: 5 }, (_, k) => {
+  const a = -Math.PI / 2 + (k * 4 * Math.PI) / 5;
+  return { x: 0.5 + 0.5 * Math.cos(a), y: 0.52 + 0.5 * Math.sin(a) };
+});
+
 export const GLYPHS: GlyphDef[] = [
   {
-    id: "v",
-    name: "V",
+    // A legegyszerűbb: egy húzás bármelyik irányba
+    id: "line",
+    name: "Vonal",
     color: "#fb923c",
-    path: [
-      { x: 0, y: 0 },
-      { x: 0.5, y: 1 },
-      { x: 1, y: 0 },
-    ],
-  },
-  {
-    id: "circle",
-    name: "Kör",
-    color: "#5ee0ff",
-    path: circlePath(),
-    closed: true,
-    // Nyitva hagyott (70%, 85%) és túlhúzott (125%) kör, 8 kezdőpontból
-    alternates: [0.7, 0.85, 1.25].flatMap((frac) =>
-      Array.from({ length: 8 }, (_, k) => arcPath((k / 8) * Math.PI * 2, frac)),
-    ),
+    path: linePath(0),
+    alternates: [45, 90, 135].map(linePath),
   },
   {
     id: "zigzag",
-    name: "Cikkcakk",
+    name: "Villám",
     color: "#facc15",
-    path: zigzagPath(4),
-    alternates: [3, 5, 6, 7, 8].map((n) => zigzagPath(n)).concat([3, 4, 5, 6, 7, 8].map((n) => zigzagPath(n, false))),
+    path: zigzagPath(6),
+    // Legalább 5 szakasz, bármelyik irányba indulva
+    alternates: [5, 7, 8].map((n) => zigzagPath(n)).concat([5, 6, 7, 8].map((n) => zigzagPath(n, false))),
+  },
+  {
+    id: "sigma",
+    name: "Szigma",
+    color: "#a78bfa",
+    path: SIGMA,
   },
   {
     id: "spiral",
     name: "Spirál",
     color: "#5eead4",
-    path: spiralPath(-Math.PI / 2, 1, 2),
-    // Bárhonnan indulhat, mindkét irányba, 1,5–2,5 fordulattal
-    alternates: [1.5, 2, 2.5].flatMap((turns) =>
+    path: spiralPath(-Math.PI / 2, 1, 2.5),
+    // Bárhonnan indulhat, mindkét irányba, 2–3 fordulattal
+    alternates: [2, 2.5, 3].flatMap((turns) =>
       [1, -1].flatMap((dir) => Array.from({ length: 8 }, (_, k) => spiralPath((k / 8) * Math.PI * 2, dir, turns))),
     ),
   },
   {
-    id: "triangle",
-    name: "Háromszög",
+    id: "hourglass",
+    name: "Homokóra",
     color: "#a3e635",
-    path: polygonPath(TRIANGLE),
+    path: polygonPath(HOURGLASS),
     closed: true,
-    // A rajz általában egy csúcsból indul: mindhárom csúcsból, mindkét irányba
-    alternates: [0, 1, 2].flatMap((start) =>
-      [TRIANGLE, [...TRIANGLE].reverse()].map((v) => polygonPath([...v.slice(start), ...v.slice(0, start)])),
-    ),
+    alternates: polygonStarts(HOURGLASS),
+    minScore: 0.62,
   },
   {
     id: "heart",
@@ -150,23 +216,23 @@ export const GLYPHS: GlyphDef[] = [
     color: "#f9a8d4",
     path: heartPath(),
     closed: true,
+    // Lekerekített szív: a gyorsan rajzolt szív csúcsa és bemetszése elmosódik
+    alternates: [smoothPath(heartPath(), 3), smoothPath(heartPath(), 5)],
   },
   {
-    id: "caret",
-    name: "Hegycsúcs",
+    id: "triangle",
+    name: "Háromszög",
     color: "#bae6fd",
-    path: [
-      { x: 0, y: 1 },
-      { x: 0.5, y: 0 },
-      { x: 1, y: 1 },
-    ],
+    path: polygonPath(TRIANGLE),
+    closed: true,
+    alternates: polygonStarts(TRIANGLE),
   },
   {
-    id: "s",
-    name: "S",
+    id: "loop",
+    name: "Hurok",
     color: "#ef4444",
-    path: sPath(),
-    alternates: [sPath(true)],
+    path: loopPath(),
+    alternates: [loopPath(true)],
   },
   {
     id: "infinity",
@@ -177,6 +243,51 @@ export const GLYPHS: GlyphDef[] = [
       return { x: 0.5 + 0.5 * Math.sin(t), y: 0.5 + 0.3 * Math.sin(2 * t) };
     }),
     closed: true,
+    minScore: 0.62,
+  },
+  {
+    id: "star",
+    name: "Csillag",
+    color: "#fde047",
+    path: polygonPath(STAR, 16),
+    closed: true,
+    alternates: polygonStarts(STAR),
+  },
+  {
+    id: "circle",
+    name: "Kör",
+    color: "#f97316",
+    path: circlePath(),
+    closed: true,
+    // Nyitva hagyott (85%) és túlhúzott (115%) kör, 8 kezdőpontból
+    alternates: [0.85, 1.15].flatMap((frac) => Array.from({ length: 8 }, (_, k) => arcPath((k / 8) * Math.PI * 2, frac))),
+  },
+  {
+    id: "omega",
+    name: "Omega",
+    color: "#5ee0ff",
+    path: omegaPath(),
+  },
+  {
+    id: "z",
+    name: "Z",
+    color: "#e879f9",
+    path: [
+      { x: 0.05, y: 0.08 },
+      { x: 0.95, y: 0.08 },
+      { x: 0.05, y: 0.92 },
+      { x: 0.95, y: 0.92 },
+    ],
+  },
+  {
+    id: "check",
+    name: "Pipa",
+    color: "#f43f5e",
+    path: [
+      { x: 0, y: 0.55 },
+      { x: 0.32, y: 0.95 },
+      { x: 1, y: 0 },
+    ],
   },
 ];
 

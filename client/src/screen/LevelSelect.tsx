@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 import { Link } from "react-router";
-import { LEVELS, THEMES, isLevelUnlocked, type LevelDef, type ThemeDef } from "../data/levels";
+import { LEVELS, THEMES, THEME_BY_ID, isLevelUnlocked, levelShowcase, type LevelDef, type ThemeDef } from "../data/levels";
+import { ENEMY_BY_ID } from "../data/enemies";
 import { MonsterList } from "./MonsterList";
 import { usableSpells, useProfile } from "../profile/profile";
 import { PageFrame } from "../components/PageFrame";
 import { DrawnCanvas } from "../components/DrawnCanvas";
-import { getTerrain } from "../draw/terrain";
+import { drawLevelArt } from "../draw/levelArt";
 import { drawLock } from "../draw/icons";
 
 export function LevelSelect() {
@@ -55,10 +56,11 @@ function ThemeSection({
             return (
               <div key={level.id} className={`level-tile level-tile--locked ${last}`} aria-disabled="true">
                 <span className="level-tile__art">
-                  <LevelArt level={level} width={200} height={112} locked />
+                  <LevelArt level={level} width={320} height={180} locked />
                   <span className="level-tile__code">{level.code}</span>
                 </span>
                 <span className="level-tile__name">{level.name}</span>
+                <NewMonster level={level} locked />
                 <span className="level-tile__best">Teljesítsd az előző pályát</span>
               </div>
             );
@@ -67,11 +69,12 @@ function ThemeSection({
           return (
             <Link key={level.id} to={`/play/${level.id}`} className={`level-tile ${done ? "level-tile--done" : ""} ${last}`}>
               <span className="level-tile__art">
-                <LevelArt level={level} width={200} height={112} />
+                <LevelArt level={level} width={320} height={180} />
                 <span className="level-tile__code">{level.code}</span>
                 {done && <span className="level-tile__done">Teljesítve</span>}
               </span>
               <span className="level-tile__name">{level.name}</span>
+              <NewMonster level={level} locked={false} />
               <span className="level-tile__best">{best ? `Legjobb: ${best}` : "Még nem játszott"}</span>
             </Link>
           );
@@ -81,31 +84,34 @@ function ThemeSection({
   );
 }
 
+/** A pálya képeslapja: saját jelenet a téma hangulatával, tereptárggyal és a pálya szörnyeivel */
 function LevelArt({ level, width, height, locked = false }: { level: LevelDef; width: number; height: number; locked?: boolean }) {
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-      const ground = getTerrain(level.theme ?? "meadow", 2.8, 1.8, 240);
-      // Pályánként más részlet a terepből
-      const index = Number(level.code?.split("-")[1] ?? 1) - 1;
-      const sw = ground.width * 0.3;
-      const sh = (sw * h) / w;
-      const sx = ground.width * (0.12 + index * 0.13);
-      const sy = ground.height * (0.25 + (index % 2) * 0.15);
-      ctx.drawImage(ground, sx, sy, sw, sh, 0, 0, w, h);
-      // Halvány sötétítés alul a felirat alá
-      const g = ctx.createLinearGradient(0, h * 0.5, 0, h);
-      g.addColorStop(0, "rgba(0,0,0,0)");
-      g.addColorStop(1, "rgba(0,0,0,0.45)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
-      // Lezárt pálya: elsötétítve, középen lakat
+      const theme = THEME_BY_ID.get(level.theme ?? "meadow")!;
+      drawLevelArt(ctx, w, h, {
+        theme: theme.id,
+        index: Number(level.code?.split("-")[1] ?? 1) - 1,
+        tint: theme.enemyTint,
+        monsters: levelShowcase(level),
+        locked,
+      });
+      // Lezárt pálya: elsötétítve (a jelenet sejlik), középen lakat
       if (locked) {
-        ctx.fillStyle = "rgba(10,8,20,0.66)";
+        ctx.fillStyle = "rgba(10,8,20,0.38)";
         ctx.fillRect(0, 0, w, h);
-        drawLock(ctx, w / 2, h * 0.42, h * 0.4, "#d4d4d8");
+        drawLock(ctx, w / 2, h * 0.4, h * 0.24, "#e4e4e7");
       }
     },
     [level, locked],
   );
   return <DrawnCanvas width={width} height={height} draw={draw} className="level-art" />;
+}
+
+/** "Új szörny" felirat a kártyán: lezárt pályán titok */
+function NewMonster({ level, locked }: { level: LevelDef; locked: boolean }) {
+  const featured = levelShowcase(level).find((m) => m.isNew);
+  const def = featured && ENEMY_BY_ID.get(featured.type);
+  if (!def) return null;
+  return <span className="level-tile__new">Új szörny: {locked ? "???" : def.name}</span>;
 }

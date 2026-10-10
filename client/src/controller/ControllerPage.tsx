@@ -117,7 +117,8 @@ export function ControllerPage() {
     const { glyph, score: match } = result;
     const spell = SPELL_BY_GLYPH.get(glyph.id);
     if (!spell || !equipped.includes(spell.id)) {
-      showFlash(spell?.name ?? glyph.name, "#9d94c4", "Még nem tanultad meg");
+      // A lezárt varázslat neve titok marad
+      showFlash("???", "#9d94c4", "Ismeretlen varázslat: még nem tanultad meg");
       return { color: "#9d94c4" };
     }
     const playing = ready && phase === "playing";

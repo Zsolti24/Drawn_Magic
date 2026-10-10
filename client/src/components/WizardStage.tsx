@@ -3,7 +3,7 @@ import { resolveLook, type WizardLook } from "../data/wizardParts";
 import { castAnimSeconds, drawWizardFigure } from "../draw/wizard";
 import { getMeadow } from "../draw/meadow";
 import { drawSparkleAt } from "../draw/icons";
-import { drawEffects, drawShieldBubble } from "../game/render";
+import { drawEffects, drawShieldBubble, empoweredStrength } from "../game/render";
 import { drawGroundEffects } from "../draw/spellFx";
 import { Game, WIZARD_FEET, WIZARD_FIGURE } from "../game/Game";
 import { SPELLS } from "../data/spells";
@@ -21,11 +21,13 @@ const PREVIEW_SPELLS = SPELLS.map((s) => {
   const effect =
     e.kind === "projectile"
       ? { ...e, speed: e.speed * 0.12 }
-      : e.kind === "poison" || e.kind === "freeze" || e.kind === "meteor"
+      : e.kind === "poison" || e.kind === "freeze" || e.kind === "meteor" || e.kind === "firering"
         ? { ...e, radius: e.radius * 0.35 }
         : e.kind === "blackhole"
           ? { ...e, radius: e.radius * 0.22 }
-          : e;
+          : e.kind === "blink"
+            ? { ...e, distance: 0, radius: e.radius * 0.35 }
+            : e;
   return { ...s, cooldown: 0, effect };
 });
 
@@ -145,6 +147,7 @@ export function WizardStage({ look, walking = false, cast = null, sparkles = fal
           cast: lastCast ? 1 - lastCast.age / castLength : 0,
           castColor: lastCast?.spell.color ?? null,
           castKind: lastCast?.spell.id ?? null,
+          aura: game ? empoweredStrength(game) : 0,
         },
         fx,
         feetY,

@@ -1258,6 +1258,7 @@ a.level-card:hover {
 /* Öltözet: próbasáv a mágus alatt */
 .preview-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.5rem;
   border-radius: 14px;
@@ -1328,6 +1329,60 @@ a.level-card:hover {
 
 .stat--cooldown {
   color: #e9d5ff;
+}
+
+/* Kit ér, mennyit sebez, mozgat-e: címke–érték sorok */
+.spell-traits {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 0.7rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.spell-traits dt {
+  color: var(--muted);
+}
+
+.spell-traits dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.spell-traits__none {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.spell-traits__bonus {
+  color: #86efac;
+}
+
+.trait {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+
+.trait--single {
+  color: #fdba74;
+  background: rgba(251, 146, 60, 0.15);
+}
+
+.trait--multi {
+  color: #fde68a;
+  background: rgba(250, 204, 21, 0.15);
+}
+
+.trait--area {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.trait--self {
+  color: #a5f3fc;
+  background: rgba(94, 224, 255, 0.15);
 }
 
 .spell-card__details summary {
@@ -1792,10 +1847,32 @@ a.level-card:hover {
   display: block;
 }
 
+.level-tile__art {
+  overflow: hidden;
+  border-radius: 10px;
+}
+
 .level-tile__art .level-art {
   width: 100% !important;
   height: auto !important;
-  aspect-ratio: 200 / 112;
+  aspect-ratio: 16 / 9;
+  transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+/* Ráközelít a jelenetre, ha fölé viszed az egeret */
+.level-tile:not(.level-tile--locked):hover .level-art {
+  transform: scale(1.07);
+  filter: brightness(1.12) saturate(1.1);
+}
+
+.level-tile__new {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--theme-color);
+}
+
+.level-tile--locked .level-tile__new {
+  color: var(--muted);
 }
 
 .level-tile__code {

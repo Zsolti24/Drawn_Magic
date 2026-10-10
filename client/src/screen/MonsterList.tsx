@@ -119,10 +119,10 @@ function monstersOf(theme: ThemeDef) {
 }
 
 function speedLabel(speed: number) {
-  if (speed < 0.1) return "Nagyon lassú";
-  if (speed < 0.16) return "Lassú";
-  if (speed < 0.25) return "Közepes";
-  if (speed < 0.33) return "Gyors";
+  if (speed < 0.08) return "Nagyon lassú";
+  if (speed < 0.13) return "Lassú";
+  if (speed < 0.2) return "Közepes";
+  if (speed < 0.27) return "Gyors";
   return "Nagyon gyors";
 }
 

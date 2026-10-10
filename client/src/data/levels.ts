@@ -43,49 +43,51 @@ export const THEMES: ThemeDef[] = [
     color: "#84cc16",
     enemyTint: ["#3a2f5c", "#6b5a9e"],
     levelNames: ["Napfényes tisztás", "Pipacsos domb", "Szélfútta mező", "Darázsfészek", "A Rémmadárijesztő földje"],
-    // A fajok pályáról pályára érkeznek; a from = mikortól jöhetnek a pályán belül (nehézség 0..1)
+    // A fajok pályáról pályára érkeznek, a pályán belül pedig az elejétől keverve jönnek.
+    // A súly csoportonként számít: a nagy rajokban jövők (pók) kisebb súlyt kapnak, hogy darabra se nyomjanak el mindent.
+    // from = mikortól jöhet a pályán belül (a pálya idejének aránya, 0..1)
     enemyMixes: [
       [
-        { type: "imp", weight: 5 },
-        { type: "spider", weight: 3, from: 0.25 },
-      ],
-      [
         { type: "imp", weight: 4 },
-        { type: "spider", weight: 3 },
-        { type: "hornet", weight: 3, from: 0.15 },
-        { type: "bonetortoise", weight: 1.2, from: 0.35 },
+        { type: "spider", weight: 2 },
       ],
       [
         { type: "imp", weight: 3 },
-        { type: "spider", weight: 2 },
-        { type: "hornet", weight: 2 },
-        { type: "bonetortoise", weight: 1 },
+        { type: "spider", weight: 1.5 },
+        { type: "hornet", weight: 3 },
+        { type: "bonetortoise", weight: 2.5 },
+      ],
+      [
+        { type: "imp", weight: 3 },
+        { type: "spider", weight: 1.5 },
+        { type: "hornet", weight: 2.5 },
+        { type: "bonetortoise", weight: 2 },
         { type: "toad", weight: 3 },
-        { type: "slime", weight: 2, from: 0.25 },
-        { type: "graveworm", weight: 2, from: 0.45 },
+        { type: "slime", weight: 2.5 },
+        { type: "graveworm", weight: 3 },
       ],
       [
-        { type: "imp", weight: 2 },
-        { type: "spider", weight: 2 },
-        { type: "hornet", weight: 2 },
-        { type: "bonetortoise", weight: 1.5 },
-        { type: "toad", weight: 2 },
+        { type: "imp", weight: 3 },
+        { type: "spider", weight: 1.5 },
+        { type: "hornet", weight: 2.5 },
+        { type: "bonetortoise", weight: 2 },
+        { type: "toad", weight: 3 },
         { type: "slime", weight: 2 },
-        { type: "graveworm", weight: 2 },
-        { type: "boar", weight: 2.5, from: 0.1 },
-        { type: "bonecrow", weight: 2, from: 0.35 },
+        { type: "graveworm", weight: 3 },
+        { type: "boar", weight: 3 },
+        { type: "bonecrow", weight: 3 },
       ],
       [
-        { type: "imp", weight: 2 },
-        { type: "spider", weight: 2 },
-        { type: "hornet", weight: 2 },
-        { type: "bonetortoise", weight: 1.5 },
-        { type: "toad", weight: 2 },
+        { type: "imp", weight: 3 },
+        { type: "spider", weight: 1.5 },
+        { type: "hornet", weight: 2.5 },
+        { type: "bonetortoise", weight: 2 },
+        { type: "toad", weight: 3 },
         { type: "slime", weight: 2 },
-        { type: "graveworm", weight: 2 },
-        { type: "boar", weight: 2 },
-        { type: "bonecrow", weight: 2 },
-        { type: "scarecrow", weight: 0.8, from: 0.3 },
+        { type: "graveworm", weight: 3 },
+        { type: "boar", weight: 3 },
+        { type: "bonecrow", weight: 3 },
+        { type: "scarecrow", weight: 0.4, from: 0.1 },
       ],
     ],
   },
@@ -132,36 +134,35 @@ export const THEME_BY_ID = new Map(THEMES.map((t) => [t.id, t]));
 /** Ennyi pálya van témánként */
 export const LEVELS_PER_THEME = 5;
 
+/** A téma pályáinak hossza percben, sorrendben (a játék nem írja ki) */
+const LEVEL_MINUTES = [4, 5, 6, 8, 10];
+
 /** A pálya beállításai a nehézség szerint (0 = az első pálya, 1 = az utolsó) */
 function levelConfig(theme: ThemeDef, d: number, index: number, n: number): Partial<GameConfig> {
   const lerp = (a: number, b: number) => a + (b - a) * d;
   const mix = theme.enemyMixes?.[index];
-  // A pálya hossza: az 1-1-en 45 szörny, utána pályánként egyre több
-  const killGoal = 45 + n * 10;
-  // Egyszerre érkező csoportok: a pálya elején és végén
-  const spawnGroups: [number, number] = [1.3 + n * 0.12, 2.2 + n * 0.18];
+  const common: Partial<GameConfig> = {
+    terrain: theme.id,
+    enemyTint: theme.enemyTint,
+    duration: LEVEL_MINUTES[index] * 60,
+    // Érkező szörnyek másodpercenként a pálya elején és végén; pályáról pályára több
+    spawnRate: [2 + n * 0.12, 4.4 + n * 0.18],
+    maxEnemies: Math.round(60 + n * 3),
+  };
   if (mix) {
     // Saját fajok: a típusok adatai + pályánként erősödő szorzók
     return {
-      terrain: theme.id,
-      enemyTint: theme.enemyTint,
+      ...common,
       enemyMix: mix,
       enemyHpScale: 1 + n * 0.12,
-      enemySpeedScale: 1 + n * 0.05,
-      spawnInterval: [Math.max(0.8, 1.5 - n * 0.1), Math.max(0.4, 0.75 - n * 0.05)],
-      killGoal,
-      spawnGroups,
+      enemySpeedScale: 1 + n * 0.04,
     };
   }
   return {
-    terrain: theme.id,
-    enemyTint: theme.enemyTint,
-    enemySpeed: [lerp(0.24, 0.32), lerp(0.36, 0.48)],
-    spawnInterval: [lerp(1.4, 0.8), lerp(0.6, 0.35)],
+    ...common,
+    enemySpeed: [lerp(0.19, 0.26), lerp(0.29, 0.38)],
     enemyHp: Math.round(lerp(24, 60)),
     enemyDamage: Math.round(lerp(4, 8)),
-    killGoal,
-    spawnGroups,
   };
 }
 
@@ -188,6 +189,20 @@ export const LEVEL_BY_ID = new Map(LEVELS.map((l) => [l.id, l]));
 export function isLevelUnlocked(levelId: string, completed: string[]) {
   const i = LEVELS.findIndex((l) => l.id === levelId);
   return i === 0 || (i > 0 && completed.includes(LEVELS[i - 1].id));
+}
+
+/** A pálya képeslapjára: legfeljebb 3 szörny, köztük kiemelve (isNew) az a faj, amelyik ezen a pályán jelenik meg először */
+export function levelShowcase(level: LevelDef): { type: string; isNew: boolean }[] {
+  const theme = level.theme ? THEME_BY_ID.get(level.theme) : undefined;
+  const index = Number(level.code?.split("-")[1] ?? 1) - 1;
+  const mix = theme?.enemyMixes?.[index];
+  if (!mix) return [{ type: "blob", isNew: false }, { type: "blob", isNew: false }, { type: "blob", isNew: false }];
+  const before = new Set(theme!.enemyMixes!.slice(0, index).flatMap((m) => m.map((e) => e.type)));
+  const fresh = mix.filter((e) => !before.has(e.type)).map((e) => e.type);
+  const featured = fresh[fresh.length - 1];
+  // A többiek: a többi új faj, aztán a korábbiak közül a legutóbb érkezettek
+  const others = [...fresh.slice(0, -1), ...mix.map((e) => e.type).filter((t) => before.has(t)).reverse()].slice(0, 2);
+  return [...others.map((type) => ({ type, isNew: false })), ...(featured ? [{ type: featured, isNew: true }] : [])];
 }
 
 /** A pálya utáni következő pálya (ha van) */

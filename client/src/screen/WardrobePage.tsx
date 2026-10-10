@@ -2,6 +2,7 @@ import { useCallback, useState, type CSSProperties } from "react";
 import {
   BEARD_COLORS,
   GEAR,
+  gearBonus,
   SKIN_COLORS,
   type AmuletDef,
   type GearSlot,
@@ -10,12 +11,12 @@ import {
   type StaffDef,
   type WizardLook,
 } from "../data/wizardParts";
-import { SPELLS } from "../data/spells";
-import { isUnlocked, useProfile } from "../profile/profile";
+import { isUnlocked, usableSpells, useProfile } from "../profile/profile";
 import { PageFrame } from "../components/PageFrame";
 import { DrawnCanvas } from "../components/DrawnCanvas";
 import { WizardStage, type StageCast } from "../components/WizardStage";
 import { drawItemIcon } from "../draw/wizard";
+import { BonusChips, BonusDiff } from "../components/StatBonus";
 import { drawLock } from "../draw/icons";
 import { drawGlowingGlyph } from "../draw/shapes";
 import { GLYPH_BY_ID } from "../data/glyphs";
@@ -63,7 +64,7 @@ export function WardrobePage() {
               <DrawnCanvas width={34} height={34} draw={drawFootsteps} />
               {walking ? "Megállás" : "Séta"}
             </button>
-            {SPELLS.map((spell) => (
+            {usableSpells(profile).map((spell) => (
               <button
                 key={spell.id}
                 className="preview-btn"
@@ -75,6 +76,7 @@ export function WardrobePage() {
               </button>
             ))}
           </div>
+          <GearSummary look={look} tryOn={tryOn ? shownLook : null} />
         </div>
 
         <nav className="outfit__slots" aria-label="Felszerelési helyek">
@@ -92,6 +94,7 @@ export function WardrobePage() {
                 <span className="gear-slot__text">
                   <span className="gear-slot__label">{SLOT_LABELS[slot]}</span>
                   <span className="gear-slot__name">{item?.name ?? "Nincs"}</span>
+                  {item && <BonusChips bonus={item.bonus} />}
                 </span>
               </button>
             );
@@ -126,6 +129,7 @@ export function WardrobePage() {
                     <ItemIcon slot="amulet" size={56} />
                     <span className="item-row__text">
                       <span className="item-row__name">Nincs amulett</span>
+                      <BonusChips bonus={{}} />
                     </span>
                     {look.amulet === null && <span className="item-row__badge">Felvéve</span>}
                   </button>
@@ -138,14 +142,16 @@ export function WardrobePage() {
                       key={item.id}
                       className={`item-row ${worn ? "item-row--on" : ""} ${unlocked ? "" : "item-row--locked"}`}
                       onClick={() => unlocked && setLook({ [open]: item.id })}
-                      onMouseEnter={() => setTryOn({ [open]: item.id })}
-                      onFocus={() => setTryOn({ [open]: item.id })}
+                      // Lezárt tárgyat nem lehet felpróbálni: a kinézete is titok
+                      onMouseEnter={() => setTryOn(unlocked ? { [open]: item.id } : null)}
+                      onFocus={() => setTryOn(unlocked ? { [open]: item.id } : null)}
                       aria-disabled={!unlocked}
                     >
                       <ItemIcon slot={open} item={item as Item} size={56} locked={!unlocked} />
                       <span className="item-row__text">
-                        <span className="item-row__name">{item.name}</span>
-                        <span className="item-row__obtain">{unlocked ? "Feloldva" : item.obtain}</span>
+                        <span className="item-row__name">{unlocked ? item.name : `Ismeretlen ${SLOT_LABELS[open].toLowerCase()}`}</span>
+                        {unlocked ? <BonusChips bonus={item.bonus} /> : <span className="item-row__teaser">Vajon mit tudhat? Szerezd meg, és kiderül.</span>}
+                        {unlocked && <span className="item-row__obtain">Feloldva</span>}
                       </span>
                       {worn && <span className="item-row__badge">Felvéve</span>}
                     </button>
@@ -210,18 +216,26 @@ function ItemIcon({ slot, item, size, locked = false }: { slot: GearSlot; item?:
         ctx.stroke();
         return;
       }
-      drawItemIcon(ctx, slot, item, w, h);
       if (locked) {
-        ctx.fillStyle = "rgba(10,7,22,0.6)";
-        ctx.beginPath();
-        ctx.roundRect(0, 0, w, h, w * 0.18);
-        ctx.fill();
-        drawLock(ctx, w * 0.76, h * 0.74, w * 0.3, "#e9d5ff");
+        // A kinézet titok: a tárgy helyett izzó kérdőjel és kis lakat
+        const glow = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.45);
+        glow.addColorStop(0, "rgba(167,123,255,0.35)");
+        glow.addColorStop(1, "rgba(167,123,255,0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = "rgba(233,213,255,0.85)";
+        ctx.font = `800 ${Math.round(h * 0.55)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("?", w / 2, h * 0.52);
+        drawLock(ctx, w * 0.78, h * 0.78, w * 0.26, "#e9d5ff");
+        return;
       }
+      drawItemIcon(ctx, slot, item, w, h);
     },
     [slot, item, locked],
   );
-  return <DrawnCanvas width={size} height={size} draw={draw} label={item?.name ?? "Üres"} />;
+  return <DrawnCanvas width={size} height={size} draw={draw} label={locked ? "Ismeretlen tárgy" : (item?.name ?? "Üres")} />;
 }
 
 /** Megjelenés ikon: arc a választott bőr- és szakállszínnel */
@@ -291,4 +305,21 @@ function SpellGlyphIcon({ glyph, color }: { glyph: string; color: string }) {
     [glyph, color],
   );
   return <DrawnCanvas width={34} height={34} draw={draw} />;
+}
+
+/** A felszerelés összes bónusza; felpróbáláskor az is, mi változna a felvételével */
+function GearSummary({ look, tryOn }: { look: WizardLook; tryOn: WizardLook | null }) {
+  const current = gearBonus(look);
+  return (
+    <section className="gear-summary">
+      <h2 className="gear-summary__title">A felszerelés bónusza</h2>
+      <BonusChips bonus={current} empty="A felvett tárgyak nem adnak bónuszt" />
+      {tryOn && (
+        <div className="gear-summary__try">
+          <span className="gear-summary__label">Ha ezt felveszed:</span>
+          <BonusDiff from={current} to={gearBonus(tryOn)} />
+        </div>
+      )}
+    </section>
+  );
 }

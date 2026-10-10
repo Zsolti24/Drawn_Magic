@@ -77,7 +77,7 @@ export function PauseMenu({ level, game, phoneMissing, onResume, onRestart, onLe
   );
 }
 
-function Stat({ icon, label, value, sub }: { icon: Draw; label: string; value: string; sub?: string }) {
+export function Stat({ icon, label, value, sub }: { icon: Draw; label: string; value: string; sub?: string }) {
   return (
     <div className="pause__stat">
       <DrawnCanvas width={22} height={22} draw={icon} />
@@ -90,17 +90,17 @@ function Stat({ icon, label, value, sub }: { icon: Draw; label: string; value: s
   );
 }
 
-type Draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
+export type Draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
 
-function MenuIcon({ draw }: { draw: Draw }) {
+export function MenuIcon({ draw }: { draw: Draw }) {
   const stable = useCallback(draw, [draw]);
   return <DrawnCanvas width={20} height={20} draw={stable} className="pause__icon" />;
 }
 
 const LINE = "rgba(255,255,255,0.9)";
 
-const stopwatchIcon: Draw = (ctx, w, h) => drawStopwatchLineIcon(ctx, w / 2, h / 2, h * 0.95, "rgba(255,255,255,0.7)");
-const skullIcon: Draw = (ctx, w, h) => drawSkullLineIcon(ctx, w / 2, h / 2, h * 0.95, "rgba(255,255,255,0.7)");
+export const stopwatchIcon: Draw = (ctx, w, h) => drawStopwatchLineIcon(ctx, w / 2, h / 2, h * 0.95, "rgba(255,255,255,0.7)");
+export const skullIcon: Draw = (ctx, w, h) => drawSkullLineIcon(ctx, w / 2, h / 2, h * 0.95, "rgba(255,255,255,0.7)");
 
 const heartIcon: Draw = (ctx, w, h) => {
   const s = w * 0.42;
@@ -116,7 +116,7 @@ const heartIcon: Draw = (ctx, w, h) => {
   ctx.fill();
 };
 
-const playIcon: Draw = (ctx, w, h) => {
+export const playIcon: Draw = (ctx, w, h) => {
   ctx.fillStyle = "#0b0d12";
   ctx.beginPath();
   ctx.moveTo(w * 0.3, h * 0.2);
@@ -126,7 +126,7 @@ const playIcon: Draw = (ctx, w, h) => {
   ctx.fill();
 };
 
-const restartIcon: Draw = (ctx, w, h) => {
+export const restartIcon: Draw = (ctx, w, h) => {
   ctx.strokeStyle = LINE;
   ctx.lineWidth = w * 0.1;
   ctx.lineCap = "round";
@@ -144,7 +144,7 @@ const restartIcon: Draw = (ctx, w, h) => {
   ctx.fill();
 };
 
-const mapIcon: Draw = (ctx, w, h) => {
+export const mapIcon: Draw = (ctx, w, h) => {
   ctx.strokeStyle = LINE;
   ctx.lineWidth = w * 0.09;
   ctx.lineJoin = "round";
@@ -165,7 +165,7 @@ const mapIcon: Draw = (ctx, w, h) => {
   ctx.stroke();
 };
 
-const exitIcon: Draw = (ctx, w, h) => {
+export const exitIcon: Draw = (ctx, w, h) => {
   ctx.strokeStyle = "#fda4af";
   ctx.lineWidth = w * 0.09;
   ctx.lineCap = "round";
